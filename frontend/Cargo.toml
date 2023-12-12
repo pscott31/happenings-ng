@@ -1,0 +1,15 @@
+cargo-features = ["per-package-target"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[package]
+name = "frontend"
+version = "0.1.0"
+edition = "2021"
+# forced-target = "wasm32-unknown-unknown"
+
+[dependencies]
+leptos = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
+leptos_macro = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
+wasm-bindgen = "0.2.89"
