@@ -1,0 +1,6 @@
+edition = "2021"
+
+fn_single_line = true
+format_macro_matchers = true
+imports_indent = "Visual"
+imports_layout = "Horizontal"

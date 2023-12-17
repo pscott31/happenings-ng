@@ -1,2 +1,6 @@
 target
-arse
+.DS_Store
+.VSCodeCounter
+happenings.toml
+happenings.db
+

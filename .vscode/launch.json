@@ -1,0 +1,51 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'happenings'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=happenings",
+                    "--package=happenings"
+                ],
+                "filter": {
+                    "name": "happenings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'happenings'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=happenings",
+                    "--package=happenings"
+                ],
+                "filter": {
+                    "name": "happenings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "chrome",
+            "name": "http://localhost:3000",
+            "request": "launch",
+            "url": "http://localhost:3000"
+        }
+    ]
+}

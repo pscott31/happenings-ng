@@ -1,5 +1,3 @@
-cargo-features = ["per-package-target"]
-
 [lib]
 crate-type = ["cdylib"]
 
@@ -7,9 +5,17 @@ crate-type = ["cdylib"]
 name = "frontend"
 version = "0.1.0"
 edition = "2021"
-# forced-target = "wasm32-unknown-unknown"
 
 [dependencies]
 leptos = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
 leptos_macro = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
+leptos_router = { version = "0.5.4", features = ["csr", "nightly"] }
+serde = { version = "1.0.193", features = ["derive"] }
+reqwest = "0.11.22"
 wasm-bindgen = "0.2.89"
+common = { path = "../common" }
+console_log = "1.0.0"
+console_error_panic_hook = "0.1.7"
+log = "0.4.20"
+leptos-use = { version = "0.9.0", features = ["serde_json", "serde"] }
+anyhow = "1.0.75"

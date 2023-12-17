@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="preload" href="/app.wasm" as="fetch" type="application/wasm" crossorigin="">
+    <link rel="modulepreload" href="/app.js">
+    <link rel="stylesheet" href="/static/bulma.min.css">
+</head>
+</head>
+
+<body style="min-height: 100vh">
+    <script type="module">import init from '/app.js'; init('/app.wasm');</script>
+</body>
+
+</html>

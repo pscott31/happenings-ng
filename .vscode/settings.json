@@ -1,0 +1,12 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+    ],
+    "rust-analyzer.rustfmt.overrideCommand": [
+        "leptosfmt",
+        "-c",
+        "${workspaceFolder}/leptosfmt.toml",
+        "--stdin",
+        "--rustfmt"
+    ]
+}

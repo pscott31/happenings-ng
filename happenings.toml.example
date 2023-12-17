@@ -1,0 +1,14 @@
+[[login.oauth_providers]]
+name = "google"
+client_id = "<your_client_id>"
+client_secret = "<your_client_secret>"
+icon_url = "/static/google.svg"
+auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+token_url = "https://www.googleapis.com/oauth2/v3/token"
+
+[db]
+endpoint = "file:happenings.db"
+namespace = "happenings"
+database = "happenings"
+
