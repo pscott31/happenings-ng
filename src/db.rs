@@ -8,12 +8,19 @@ pub struct Session {
     pub user: Thing,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Credentials {
+    OAuth,
+    Password { hash: String, salt: String },
+}
 #[derive(Debug, Serialize)]
 pub struct NewPerson {
     pub given_name: String,
     pub family_name: String,
-    pub picture: String,
+    pub picture: Option<String>,
     pub email: String,
+    pub phone: Option<String>,
+    pub credentials: Credentials,
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,8 +29,10 @@ pub struct Person {
     pub id: Thing,
     pub given_name: String,
     pub family_name: String,
-    pub picture: String,
+    pub picture: Option<String>,
     pub email: String,
+    pub phone: Option<String>,
+    pub credentials: Credentials,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,4 +40,3 @@ pub struct Record {
     #[allow(dead_code)]
     pub id: Thing,
 }
-

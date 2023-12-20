@@ -1,14 +1,13 @@
-use std::{collections::HashMap, ops::Add};
+use std::collections::HashMap;
 
 use crate::config;
 use crate::AppState;
 
-use super::db::*;
-use super::error_handling::*;
+use crate::db::*;
+use crate::error_handling::*;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
 use axum::{extract::{Host, Query, State}, response::{IntoResponse, Json}};
-use chrono::Duration;
 use oauth2::CsrfToken;
 use oauth2::PkceCodeChallenge;
 use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthorizationCode, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse};
@@ -141,32 +140,18 @@ pub async fn oauth_return(
             .content(NewPerson {
                 given_name: user_info.given_name,
                 family_name: user_info.family_name,
-                picture: user_info.picture,
+                picture: Some(user_info.picture),
+                phone: None,
                 email: user_info.email,
+                credentials: Credentials::OAuth,
             })
             .await?
             .pop()
             .ok_or(anyhow!("failed to create new user"))?,
     };
 
-    // Create the session
-    let session_record: Record = app_state
-        .db
-        .create("session")
-        .content(Session {
-            expires_at: chrono::Utc::now().add(Duration::days(1)),
-            user: person.id.clone(),
-        })
-        .await?
-        .pop()
-        .ok_or(anyhow!("failed to create session"))?;
-
-    Ok(Json(common::OAuthReturnResponse {
-        session_id: session_record.id.id.to_string(),
-        given_name: person.given_name,
-        family_name: person.family_name,
-        email: person.email,
-        user_id: person.id.id.to_string(),
-    }))
+    // // Create the session
+    let session_id = super::create_session(app_state.db, person.id.id.to_string()).await?;
+    Ok(Json(common::Session { id: session_id }))
 }
 

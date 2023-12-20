@@ -30,9 +30,15 @@ common = { path = "common" }
 figment = { version = "0.10.12", features = ["toml", "env"] }
 tower-http = { version = "0.5.0", features = ["tracing", "trace"] }
 futures-util = "0.3.29"
+rand = "0.8.5"
+sha256 = "1.4.0"
 
 [build-dependencies]
 anyhow = "1.0.75"
+jobserver = "0.1.27"
 wasm-bindgen-cli-support = "0.2.89"
+
+[dev-dependencies]
+axum-test = "14.0.0"
 # frontend = { path = "frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
 # frontend = { path = "frontend" }

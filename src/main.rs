@@ -1,11 +1,13 @@
+mod auth;
 mod config;
 mod db;
 mod error_handling;
-mod oauth;
+mod middleware;
 mod server;
 
 use anyhow::anyhow;
-use axum::{extract::{Path, Request, State}, http::header::{self}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::{IntoResponse, Response}, routing::get, Json, Router};
+use axum::{extract::{Path, Query, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
+use config::Config;
 use dotenv::dotenv;
 use error_handling::AppError;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
@@ -13,43 +15,29 @@ use rust_embed::RustEmbed;
 use surrealdb::{engine::any::{connect, Any}, opt::auth::Root, Surreal};
 use tracing::*;
 
-async fn log_errors(req: Request, next: Next) -> Result<Response, StatusCode> {
-    let res = next.run(req).await;
-
-    if res.status().is_success() {
-        return Ok(res);
-    }
-
-    let (parts, body) = res.into_parts();
-
-    let body_bytes = axum::body::to_bytes(body, 4 * 1024)
-        .await
-        .inspect_err(|_| warn!("error response with large body"))
-        .or(Err(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let body_str = std::str::from_utf8(&body_bytes)
-        .inspect_err(|_| warn!("error response with non-utf body"))
-        .or(Err(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    warn!("error response: {}", body_str);
-
-    Ok(Response::from_parts(parts, axum::body::Body::from(body_bytes)))
-}
-
-#[derive(Clone)]
-struct AppState {
-    config: config::Config,
-    db: Surreal<Any>,
-}
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    info!("initalising happenings");
     dotenv().ok();
+    let config = load_config()?;
+    setup_logging();
+    let db = connect_db(&config).await?;
+    let app = build_app(db, config).layer(axum::middleware::from_fn(middleware::log_errors));
 
-    let config: config::Config = Figment::from(Serialized::defaults(config::Config::default()))
+    server::serve(app).await;
+    info!("graceful shutdown complete");
+    Ok(())
+}
+
+fn load_config() -> anyhow::Result<Config> {
+    let cfg = Figment::from(Serialized::defaults(Config::default()))
         .merge(Toml::file("happenings.toml"))
         .merge(Env::prefixed("APP_"))
         .extract()?;
+    Ok(cfg)
+}
 
+fn setup_logging() {
     let filter = tracing_subscriber::EnvFilter::builder()
         .with_default_directive(Level::WARN.into()) // Default level for all modules
         .parse_lossy("happenings=debug,tower_http=trace");
@@ -58,10 +46,10 @@ async fn main() -> anyhow::Result<()> {
         .with_max_level(Level::TRACE)
         .with_env_filter(filter)
         .init();
+}
 
-    info!("Something is happening..");
-    info!("Connecting to database at {:?}", &config.db.endpoint);
-    info!("{:?}", std::env::current_dir());
+async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
+    info!("connecting to database at {:?}", &config.db.endpoint);
     let db = connect(&config.db.endpoint).await?;
 
     if let Some(config::Credentials::Root {
@@ -76,21 +64,32 @@ async fn main() -> anyhow::Result<()> {
         .use_db(&config.db.database)
         .await?;
 
-    let app = Router::new()
+    // let schema = include_str!("schema.surql");
+    // db.query(schema).await?.check()?;
+
+    Ok(db)
+}
+
+#[derive(Clone)]
+struct AppState {
+    config: Config,
+    db: Surreal<Any>,
+}
+
+fn build_app(db: Surreal<Any>, config: Config) -> Router {
+    Router::new()
         .route("/", get(root_handler))
         .route("/app.wasm", get(wasm_handler))
         .route("/app.js", get(js_handler))
         .route("/static/*path", get(static_handler))
-        .route("/api/login", get(oauth::login_handler))
-        .route("/api/user", get(user_handler))
-        .route("/api/oauth_return", get(oauth::oauth_return))
+        .route("/api/auth/oauth/link", get(auth::oauth::login_handler))
+        .route("/api/auth/password/signin", post(auth::password::signin))
+        .route("/api/auth/password/signup", post(auth::password::signup))
+        .route("/api/user_exists", get(user_exists_handler))
+        .route("/api/user", get(user_handler)) // TODO: rename current_user?
+        .route("/api/auth/oauth/return", get(auth::oauth::oauth_return))
         .fallback(get(root_handler))
-        .layer(middleware::from_fn(log_errors))
-        .with_state(AppState { db, config });
-
-    server::serve(app).await;
-    info!("graceful shutdown complete");
-    Ok(())
+        .with_state(AppState { db, config })
 }
 
 async fn user_handler(
@@ -106,7 +105,7 @@ async fn user_handler(
         .db
         .select(("session", session_id))
         .await?
-        .ok_or(anyhow!("no session with id"))?;
+        .ok_or(anyhow!("no session with id {session_id}"))?;
 
     if chrono::Utc::now() > session.expires_at {
         Err(anyhow!("session expired"))?
@@ -122,11 +121,24 @@ async fn user_handler(
         id: user.id.id.to_string(),
         given_name: user.given_name,
         family_name: user.family_name,
-        picture: user.picture,
+        picture: user.picture.unwrap_or_default(),
         email: user.email,
     };
 
     Ok(Json(resp))
+}
+
+async fn user_exists_handler(
+    State(app_state): State<AppState>,
+    query: Query<common::Email>,
+) -> Result<impl IntoResponse, AppError> {
+    let people: Vec<db::Person> = app_state
+        .db
+        .query("SELECT * FROM person where email=$email;")
+        .bind(("email", &query.0.email))
+        .await?
+        .take(0)?;
+    Ok(Json(!people.is_empty()))
 }
 
 async fn root_handler() -> impl IntoResponse {
@@ -160,6 +172,78 @@ async fn static_handler(Path(path): Path<String>) -> impl IntoResponse {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
             ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use ::axum_test::TestServer;
+
+    #[tokio::test]
+    async fn it_works() -> anyhow::Result<()> {
+        let cfg = test_config();
+
+        let db = connect_db(&cfg).await?;
+        let app = build_app(db, cfg);
+        let server = TestServer::new(app).unwrap();
+
+        let user = common::NewUser {
+            given_name: "fred".to_string(),
+            family_name: "bloggs".to_string(),
+            email: "fred@bloggs.com".to_string(),
+            password: "super_secret".to_string(),
+            phone: Some("123".to_string()),
+        };
+
+        let creds = common::EmailPassword {
+            email: user.email.clone(),
+            password: user.password.clone(),
+        };
+
+        let email = common::Email {
+            email: user.email.clone(),
+        };
+
+        // User should not exit to begin with
+        let resp = server.post("/api/user_exists").json(&email).await;
+        assert_eq!(resp.status_code(), StatusCode::OK);
+        assert!(!resp.json::<bool>());
+
+        // Try logging in before we've made a user
+        let resp = server.post("/api/auth/password/signin").json(&creds).await;
+        // TODO: Should be UNAUTHORIZED
+        assert_eq!(resp.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        // Create a user
+        let resp = server.post("/api/auth/password/signup").json(&user).await;
+        assert_eq!(resp.status_code(), StatusCode::OK);
+
+        // User should exist now
+        let resp = server.post("/api/user_exists").json(&email).await;
+        assert_eq!(resp.status_code(), StatusCode::OK);
+        assert!(resp.json::<bool>());
+
+        // Should be able to log in now.
+        let resp = server.post("/api/auth/password/signup").json(&creds).await;
+        assert_eq!(resp.status_code(), StatusCode::OK);
+
+        // assert_true()
+
+        Ok(())
+    }
+
+    fn test_config() -> Config {
+        Config {
+            db: config::DB {
+                endpoint: "mem://".to_string(),
+                credentials: None,
+                namespace: "test".to_string(),
+                database: "test".to_string(),
+            },
+            ..Config::default()
         }
     }
 }

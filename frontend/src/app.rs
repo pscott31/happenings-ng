@@ -6,12 +6,19 @@ use super::navbar::NavBar;
 use super::not_found::NotFound;
 use crate::sign_in::{OAuthReturn, SignIn};
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum SignInStatus {
+    NotVisible,
+    Welcome,
+    Password(String),
+    CreateUser(String),
+}
 #[derive(Copy, Clone)]
-pub struct SignInSignal(pub RwSignal<bool>);
+pub struct SignInSignal(pub RwSignal<SignInStatus>);
 
 #[component]
 pub fn App() -> impl IntoView {
-    provide_context(SignInSignal(create_rw_signal(false)));
+    provide_context(SignInSignal(create_rw_signal(SignInStatus::NotVisible)));
 
     view! {
       <Router>

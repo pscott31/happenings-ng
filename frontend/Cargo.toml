@@ -19,3 +19,4 @@ console_error_panic_hook = "0.1.7"
 log = "0.4.20"
 leptos-use = { version = "0.9.0", features = ["serde_json", "serde"] }
 anyhow = "1.0.75"
+validator = { version = "0.16.1", features = ["phone", "validator_derive", "derive"] }

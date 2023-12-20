@@ -2,6 +2,8 @@ use anyhow::{ensure, Context};
 use std::{env, path::PathBuf, process::{Command, Stdio}};
 use wasm_bindgen_cli_support::Bindgen;
 
+use jobserver::Client;
+
 fn main() -> anyhow::Result<()> {
     let out_dir = env::var("OUT_DIR").map(PathBuf::from)?;
     let cargo = env::var("CARGO")?;
@@ -10,7 +12,18 @@ fn main() -> anyhow::Result<()> {
 
     println!("cargo:rerun-if-changed=frontend");
 
-    let output = Command::new(cargo)
+    // // See API documentation for why this is `unsafe`
+    // let jobserver =
+    //     match unsafe { Client::from_env() } {
+    //         Some(client) => client,
+    //         None => panic!("client not configured"),
+    //     };
+
+    let jobserver = Client::new(8).expect("failed to create jobserver");
+    let mut cmd = Command::new(cargo);
+    jobserver.configure(&mut cmd);
+
+    let output = cmd
         .arg("build")
         .arg("--manifest-path=frontend/Cargo.toml")
         .arg("--target=wasm32-unknown-unknown")
