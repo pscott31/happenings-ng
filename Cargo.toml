@@ -1,6 +1,7 @@
 
 [workspace]
 members = ["frontend", "common"]
+resolver = "1"
 
 [package]
 name = "happenings"
@@ -37,6 +38,7 @@ sha256 = "1.4.0"
 anyhow = "1.0.75"
 jobserver = "0.1.27"
 wasm-bindgen-cli-support = "0.2.89"
+frontend = { path = "./frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
 
 [dev-dependencies]
 axum-test = "14.0.0"
