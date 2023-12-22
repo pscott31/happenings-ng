@@ -1270,6 +1270,8 @@ dependencies = [
  "log",
  "reqwest",
  "serde",
+ "serde_json",
+ "serde_qs",
  "validator",
  "wasm-bindgen",
 ]
@@ -1637,6 +1639,7 @@ dependencies = [
  "rust-embed",
  "serde",
  "serde_json",
+ "serde_qs",
  "sha256",
  "surrealdb",
  "tokio",

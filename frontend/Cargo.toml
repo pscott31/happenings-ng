@@ -7,8 +7,8 @@
  edition = "2021"
 
 [dependencies]
- leptos = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
- leptos_macro = { version = "0.5.4", features = ["nightly", "csr", "tracing"] }
+ leptos = { version = "0.5.4", features = ["nightly", "csr"] }
+ leptos_macro = { version = "0.5.4", features = ["nightly", "csr"] }
  leptos_router = { version = "0.5.4", features = ["csr", "nightly"] }
  serde = { version = "1.0.193", features = ["derive"] }
  reqwest = { version = "0.11.22", default-features = false, features = [
@@ -29,3 +29,5 @@
   "validator_derive",
   "derive",
  ] }
+serde_json = "1.0.108"
+serde_qs = "0.12.0"

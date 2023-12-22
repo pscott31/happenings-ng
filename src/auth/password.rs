@@ -18,7 +18,6 @@ pub async fn signup(
     let salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
     let hash = make_hash(&salt, payload.password);
 
-    Err(anyhow!("fucked up"))?;
     let _foo: db::Record = app_state
         .db
         .create("person")
@@ -33,7 +32,7 @@ pub async fn signup(
         .await?
         .pop()
         .ok_or(anyhow!("failed to create new user"))?;
-    Ok(())
+    Ok(Json(()))
 }
 
 pub async fn signin(
@@ -52,17 +51,15 @@ pub async fn signin(
         .ok_or(anyhow!("no user with email {}", payload.email))?;
 
     match &person.credentials {
-        db::Credentials::OAuth => {
-            Err(anyhow!(
-                "user with email {} exists, but associated with oauth login",
-                payload.email
-            ))?
-        }
+        db::Credentials::OAuth => Err(anyhow!(
+            "user with email {} exists, but associated with oauth login",
+            payload.email
+        ))?,
         db::Credentials::Password { hash, salt } => {
             make_hash(salt, payload.password)
                 .eq(hash)
                 .then_some(())
-                .ok_or(anyhow!("incorrect password for email {}", payload.email))?;
+                .ok_or(anyhow!("incorrect password for '{}'", payload.email))?;
         }
     }
 

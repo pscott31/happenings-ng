@@ -2,6 +2,8 @@ use common::NewUser;
 use leptos::*;
 use leptos_use::storage::{use_local_storage, JsonCodec};
 use logging::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{Array, Reflect};
 
@@ -14,7 +16,7 @@ pub fn SignIn() -> impl IntoView {
     let sign_in_page = move || match sign_in_signal() {
         SignInStatus::NotVisible => "".into_view(),
         SignInStatus::Welcome => SignInWelcome.into_view(),
-        SignInStatus::CreateUser(email) => view! { <SignInCreateUser email=email/> },
+        SignInStatus::CreateUser(email) => view! { <SignUpPassword email=email/> },
         SignInStatus::Password(email) => view! { <SignInPassword email=email/> },
     };
 
@@ -42,61 +44,45 @@ pub fn SignInPassword(email: String) -> impl IntoView {
     let (password, set_password) = create_signal("".to_string());
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
 
-    let submit =
-        create_action(move |ep: &common::EmailPassword| {
-            let ep = ep.clone();
-            async move {
-                log!("Submitting!");
-                let base = window()
-                    .location()
-                    .origin()
-                    .map_err(|_| "failed to get window origin")?;
-
-                let session = reqwest::Client::new()
-                    .post(format!("{}/api/auth/password/signin", base))
-                    .json(&ep)
-                    .send()
-                    .await
-                    .map_err(|e| format!("failed to call backend api: {}", e))?
-                    .json::<common::Session>()
-                    .await
-                    .map_err(|e| format!("failed to deserialize api response: {}", e))?;
-
-                log!("got session: {}", session.id);
-                store_session(session);
-                sign_in_signal.set(SignInStatus::NotVisible);
-                Ok::<(), String>(())
-            }
-        });
+    let submit = create_action(move |ep: &common::EmailPassword| {
+        let ep = ep.clone();
+        async move {
+            let session: common::Session = call_api("api/auth/password/signin", &ep).await?;
+            store_session(session);
+            sign_in_signal.set(SignInStatus::NotVisible);
+            Ok::<(), String>(())
+        }
+    });
 
     view! {
-      <div class="block">
-        <h1 class="subtitle my-4">Hello again</h1>
-        <div>{move || format!("{:?}", submit.value())}</div>
-        <div class="field">
-          <div class="control is-expanded">
-            <input
-              class="input"
-              type="password"
-              placeholder="Password"
-              on:change=move |e| set_password(event_target_value(&e))
-            />
-          </div>
-        </div>
-        <button
-          class="button is-primary"
-          on:click=move |_| {
-              submit
-                  .dispatch(common::EmailPassword {
-                      email: email(),
-                      password: password(),
-                  })
-          }
-        >
+      <form on:submit=move |e| {
+          e.prevent_default();
+          submit
+              .dispatch(common::EmailPassword {
+                  email: email(),
+                  password: password(),
+              })
+      }>
 
-          Continue
-        </button>
-      </div>
+        <div class="block">
+          <h1 class="subtitle my-4">Hello again</h1>
+          // <div>{move || format!("{:?}", submit.value())}</div>
+          <div class="field">
+            <div class="control is-expanded">
+              <input
+                class="input"
+                type="password"
+                placeholder="Password"
+                on:change=move |e| set_password(event_target_value(&e))
+              />
+            </div>
+          </div>
+          <ErrorNotification sig=submit.value()/>
+          <button class="button is-primary is-fullwidth" type="submit">
+            Continue
+          </button>
+        </div>
+      </form>
     }
 }
 
@@ -119,8 +105,52 @@ impl JsonError for reqwest::Response {
     }
 }
 
+async fn call_api<T, S>(path: &str, args: S) -> Result<T, String>
+where
+    S: Serialize,
+    T: DeserializeOwned,
+{
+    let base = window()
+        .location()
+        .origin()
+        .map_err(|_| "failed to get window origin")
+        .unwrap(); //todo
+    let url = format!("{}/{}", base, path);
+
+    let mut req = reqwest::Client::new().post(url).json(&args);
+
+    if let Ok(Some(local_storage)) = window().local_storage() {
+        if let Ok(Some(session_str)) = local_storage.get_item("session") {
+            if let Ok(common::Session { id }) = serde_json::from_str(&session_str) {
+                req = req.header("Authorization", id)
+            }
+        }
+    }
+
+    req.send()
+        .await
+        .map_err(|e| format!("failed to call backend api: {}", e))?
+        .json_error_for_status()
+        .await?
+        .json::<T>()
+        .await
+        .map_err(|e| format!("failed to deserialize api response: {}", e))
+}
+
 #[component]
-pub fn SignInCreateUser(email: String) -> impl IntoView {
+pub fn ErrorNotification<T, E>(#[prop(into)] sig: Signal<Option<Result<T, E>>>) -> impl IntoView
+where
+    T: Clone + 'static,
+    E: Clone + Into<String> + 'static,
+{
+    move || match sig.get() {
+        Some(Err(e)) => view! { <div class="notification is-danger">{e.into()}</div> }.into_view(),
+        _ => "".into_view(),
+    }
+}
+
+#[component]
+pub fn SignUpPassword(email: String) -> impl IntoView {
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
 
     let email = store_value(email);
@@ -133,123 +163,107 @@ pub fn SignInCreateUser(email: String) -> impl IntoView {
     let password_mismatch = Signal::derive(move || password1() != password2());
     let is_invalid = password_mismatch;
 
-    let submit = create_action(move |u: &NewUser| {
-        let u2 = u.clone();
+    let submit = create_action(move |new_user: &NewUser| {
+        let new_user = new_user.clone();
         async move {
-            log!("Submitting!");
-            let base = window()
-                .location()
-                .origin()
-                .map_err(|_| "failed to get window origin")?;
-            let url = format!("{}/api/auth/password/signup", base);
-
-            let _resp1 = reqwest::Client::new()
-                .post(url)
-                .json(&u2)
-                .send()
-                .await
-                .map_err(|e| format!("failed to call backend api: {}", e))?
-                .json_error_for_status()
-                .await?;
-
-            // Ok now try logging in
-            let session = reqwest::Client::new()
-                .post(format!("{}/api/auth/password/signin", base))
-                .json(&u2)
-                .send()
-                .await
-                .map_err(|e| format!("failed to call backend api: {}", e))?
-                .json::<common::Session>()
-                .await
-                .map_err(|e| format!("failed to deserialize api response: {}", e))?;
-
-            log!("got session: {}", session.id);
+            call_api("api/auth/password/signup", &new_user).await?;
+            let session: common::Session = call_api("api/auth/password/signin", &new_user).await?;
             store_session(session);
             sign_in_signal.set(SignInStatus::NotVisible);
             Ok::<(), String>(())
         }
     });
 
-    // errorbox = move || match submit.value() {Some(Err(e))};
-    view! {
-      <div class="notification is-danger">{move || format!("value? {:?}", submit.value()())}</div>
-      <div class="block">
-        <h1 class="subtitle my-4">Hello stranger</h1>
-        <div>"No account currently exists for {email}. Let's fix that!"</div>
-      </div>
-      <div class="field is-grouped">
-        <div class="control is-expanded">
-          <input
-            class="input"
-            type="text"
-            placeholder="Given Name"
-            on:change=move |e| set_given_name(event_target_value(&e))
-            value=given_name
-          />
-        </div>
-        <div class="control is-expanded">
-          <input
-            class="input"
-            type="text"
-            placeholder="Family Name"
-            on:change=move |e| set_family_name(event_target_value(&e))
-          />
-        </div>
-      </div>
-      <div class="field">
-        <div class="control">
-          <input
-            class="input"
-            type="text"
-            placeholder="Phone Number (optional)"
-            on:change=move |e| {
-                let ps = event_target_value(&e);
-                set_phone(ps);
-            }
-          />
-
-        </div>
-      </div>
-      <div class="field is-grouped">
-        <div class="control is-expanded">
-          <input
-            class="input"
-            class:is-danger=password_mismatch
-            type="password"
-            placeholder="Password"
-            on:change=move |e| set_password1(event_target_value(&e))
-          />
-        </div>
-        <div class="control is-expanded">
-          <input
-            class="input"
-            class:is-danger=password_mismatch
-            type="password"
-            placeholder="Password Confirmation"
-            on:change=move |e| set_password2(event_target_value(&e))
-          />
-        </div>
-      </div>
-      <button
-        class="button is-primary"
-        disabled=is_invalid
-        on:click=move |_| {
-            if password1() != password2() {
-                return;
-            }
-            submit
-                .dispatch(common::NewUser {
-                    email: email(),
-                    given_name: given_name(),
-                    family_name: family_name(),
-                    phone: if phone() != "" { Some(phone()) } else { None },
-                    password: password1(),
-                })
+    let error_notify = move || match submit.value()() {
+        Some(Err(e)) => {
+            view! { <div class="notification is-danger">{e.to_string()}</div> }.into_view()
         }
-      >
+        _ => "".into_view(),
+    };
+    view! {
+      <form on:submit=move |e| {
+          e.prevent_default();
+          if password1() != password2() {
+              return;
+          }
+          submit
+              .dispatch(common::NewUser {
+                  email: email(),
+                  given_name: given_name(),
+                  family_name: family_name(),
+                  phone: if phone() != "" { Some(phone()) } else { None },
+                  password: password1(),
+              })
+      }>
 
-        Continue
-      </button>
+        <div class="block">
+          <h1 class="subtitle my-4">Hello stranger</h1>
+          <div>"Looks like you don't have an account yet. Let's fix that!"</div>
+        </div>
+        <div class="field is-grouped">
+          <div class="control is-expanded">
+            <input
+              class="input"
+              type="text"
+              placeholder="Given Name"
+              on:change=move |e| set_given_name(event_target_value(&e))
+              value=given_name
+            />
+          </div>
+          <div class="control is-expanded">
+            <input
+              class="input"
+              type="text"
+              placeholder="Family Name"
+              on:change=move |e| set_family_name(event_target_value(&e))
+            />
+          </div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <input
+              class="input"
+              type="text"
+              placeholder="Phone Number (optional)"
+              on:change=move |e| {
+                  let ps = event_target_value(&e);
+                  set_phone(ps);
+              }
+            />
+
+          </div>
+        </div>
+        <div class="field is-grouped">
+          <div class="control is-expanded">
+            <input
+              class="input"
+              class:is-danger=password_mismatch
+              type="password"
+              placeholder="Password"
+              on:change=move |e| set_password1(event_target_value(&e))
+            />
+          </div>
+          <div class="control is-expanded">
+            <input
+              class="input"
+              class:is-danger=password_mismatch
+              type="password"
+              placeholder="Password Confirmation"
+              on:change=move |e| set_password2(event_target_value(&e))
+            />
+          </div>
+        </div>
+        <div class="field">
+          <div class="control is-expanded">{error_notify}</div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <button class="button is-primary is-fullwidth" disabled=is_invalid type="submit">
+              Continue
+            </button>
+          </div>
+        </div>
+      </form>
     }
 }
 
@@ -263,23 +277,10 @@ pub fn SignInWelcome() -> impl IntoView {
     let continue_pressed = create_action(move |email: &String| {
         let email = email.clone();
         async move {
-            let base = window()
-                .location()
-                .origin()
-                .map_err(|_| "failed to get window origin")?;
-            let url = format!("{}/api/user_exists", base);
-
-            let user_exists = reqwest::Client::new()
-                .get(url)
-                .query(&common::Email {
-                    email: email.clone(),
-                })
-                .send()
-                .await
-                .map_err(|e| format!("failed to call backend api: {}", e))?
-                .json::<bool>()
-                .await
-                .map_err(|e| format!("failed to deserialize api response: {}", e))?;
+            let args = common::Email {
+                email: email.clone(),
+            };
+            let user_exists = call_api("api/user_exists", &args).await?;
 
             let next_status = if user_exists {
                 SignInStatus::Password(email)
@@ -309,15 +310,19 @@ pub fn SignInWelcome() -> impl IntoView {
             />
           </div>
         </div>
-        <button class="button is-primary" type="submit">
-          Continue
-        </button>
+        <div class="field">
+          <div class="control">
+            <button class="button is-primary is-fullwidth" type="submit">
+              Continue
+            </button>
+          </div>
+        </div>
         <div class="level my-3">
           <hr class="level-item is-flex-shrink-2"/>
           <div class="is-size-7 px-2">OR</div>
           <hr class="level-item is-flex-shrink-2"/>
         </div>
-        <button class="button" on:click=move |_| trigger_oauth_popup.dispatch(())>
+        <button class="button" type="button" on:click=move |_| trigger_oauth_popup.dispatch(())>
           <span class="icon is-medium">
             <GoogleLogoSVG/>
           </span>
@@ -346,22 +351,11 @@ pub fn OAuthReturn() -> impl IntoView {
     }
 }
 
-async fn oauth_popup<F>(on_succces: F) -> Result<(), AppError>
+async fn oauth_popup<F>(on_success: F) -> Result<(), AppError>
 where
     F: Fn() + 'static,
 {
-    let base = window()
-        .location()
-        .origin()
-        .map_err(|_| "failed to get window origin")?;
-    let login_url = format!("{}/api/auth/oauth/link", base);
-
-    let resp = reqwest::get(login_url)
-        .await
-        .map_err(|e| format!("failed to call backend api: {}", e))?
-        .json::<common::LoginResponse>()
-        .await
-        .map_err(|e| format!("failed to deserialize api response: {}", e))?;
+    let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await?;
 
     let popup = window()
         .open_with_url_and_target_and_features(resp.url.as_str(), "popup", "popup")
@@ -369,41 +363,35 @@ where
         .ok_or(format!("failed to open popup window"))?;
 
     // TODO: How do we remove this once we're done?
-    let _remove_listener =
-        leptos_use::use_event_listener(window(), ev::message, move |evt| {
-            if evt.origin() == window().origin() && evt.data().as_string().unwrap() == "auth_ok" {
-                popup.close().unwrap(); // todo
-                on_succces();
+    let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
+        if evt.origin() == window().origin() {
+            if let Some(msg_str) = evt.data().as_string() {
+                if msg_str == "auth_ok" {
+                    popup.close().unwrap(); // todo
+                    on_success();
+                }
             }
-        });
+        }
+    });
 
     Ok(())
 }
 
 async fn validate_oauth_return() -> Result<(), AppError> {
-    let window = leptos::window();
-    let base = window.location().origin().unwrap(); //todo
-    let query = window.location().search().unwrap(); //todo
+    let query_str = window()
+        .location()
+        .search()
+        .map_err(|_| format!("unable to get query"))?;
 
-    let url = format!("{}/api/auth/oauth/return{}", base, query);
-    let resp = reqwest::get(url).await.unwrap();
+    let query_str = query_str.strip_prefix("?").unwrap_or(query_str.as_ref());
 
-    if let Err(_) = resp.error_for_status_ref() {
-        let resp = resp
-            .json::<common::ErrorResponse>()
-            .await
-            .map_err(|e| e.to_string())?;
-        return Err(resp.message.into());
-    }
-
-    let session = resp
-        .json::<common::Session>()
-        .await
-        .map_err(|e| format!("unable to decode response: {}", e.to_string()))?;
+    let payload: common::OAuthReturn =
+        serde_qs::from_str(&query_str).map_err(|_| "unable to serialize payload")?;
+    let session: common::Session = call_api("api/auth/oauth/return", payload).await?;
 
     store_session(session);
 
-    let opener = window.opener().unwrap();
+    let opener = window().opener().unwrap();
     let post_message = Reflect::get(&opener, &JsValue::from_str("postMessage")).unwrap();
 
     let args = Array::new();
@@ -417,32 +405,8 @@ async fn validate_oauth_return() -> Result<(), AppError> {
 pub async fn check_user(
     session: Option<common::Session>,
 ) -> Result<common::UserInfoReponse, AppError> {
-    let window = leptos::window();
-    let base = window.location().origin().unwrap(); //todo
-
-    let url = format!("{}/api/user", base);
-
-    let session = session.ok_or("no session in local storage")?;
-    let resp = reqwest::Client::new()
-        .get(url)
-        .header("Authorization", session.id)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    if let Err(_) = resp.error_for_status_ref() {
-        let resp = resp
-            .json::<common::ErrorResponse>()
-            .await
-            .map_err(|e| e.to_string())?;
-        return Err(resp.message.into());
-    }
-
-    let person = resp
-        .json::<common::UserInfoReponse>()
-        .await
-        .map_err(|e| format!("unable to decode response: {}", e.to_string()))?;
-
+    session.ok_or("no session in local storage")?;
+    let person = call_api("api/user", ()).await?;
     Ok(person)
 }
 

@@ -62,3 +62,9 @@ pub struct Email {
     pub email: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OAuthReturn {
+    pub state: String,
+    pub code: String,
+}
+

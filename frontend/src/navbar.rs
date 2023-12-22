@@ -2,7 +2,6 @@ use crate::app::{SignInSignal, SignInStatus};
 use crate::sign_in::check_user;
 use leptos::*;
 use leptos_use::storage::{use_local_storage, JsonCodec};
-use logging::*;
 
 #[component]
 pub fn NavBar() -> impl IntoView {
@@ -12,32 +11,27 @@ pub fn NavBar() -> impl IntoView {
 
     let user_info = create_resource(get_session, check_user);
 
-    let dudger =
-        move || {
-            match user_info() {
+    let dudger = move || match user_info() {
         None => "loading".into_view(),
-        Some(Ok(ui)) => {
-            view! {
-              <div class="navbar-item has-dropdown is-hoverable">
-                <a class="navbar-link">{format!("{} {}", ui.given_name, ui.family_name)}</a>
-                <div class="navbar-dropdown">
-                  <a class="navbar-item">Profile</a>
-                  <a class="navbar-item" on:click=|_| crate::sign_in::clear_session()>
-                    Sign Out
-                  </a>
-                </div>
-              </div>
-            }
-            .into_view()
+        Some(Ok(ui)) => view! {
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link">{format!("{} {}", ui.given_name, ui.family_name)}</a>
+            <div class="navbar-dropdown">
+              <a class="navbar-item">Profile</a>
+              <a class="navbar-item" on:click=|_| crate::sign_in::clear_session()>
+                Sign Out
+              </a>
+            </div>
+          </div>
         }
+        .into_view(),
         Some(Err(_)) => view! {
           <a class="button is-primary" on:click=move |_| sign_in_signal.set(SignInStatus::Welcome)>
             <strong>Sign in</strong>
           </a>
         }
         .into_view(),
-    }
-        };
+    };
 
     view! {
       <nav class="navbar" role="navigation" aria-label="main navigation">

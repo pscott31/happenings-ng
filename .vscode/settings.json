@@ -8,5 +8,8 @@
         "${workspaceFolder}/leptosfmt.toml",
         "--stdin",
         "--rustfmt"
-    ]
+    ],
+    "rust-analyzer.server.extraEnv": {
+        "CARGO_TARGET_DIR": "target_vscode"
+    },
 }

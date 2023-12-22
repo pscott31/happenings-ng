@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::config;
 use crate::AppState;
 
@@ -7,7 +5,7 @@ use crate::db::*;
 use crate::error_handling::*;
 use anyhow::Context;
 use anyhow::{anyhow, Result};
-use axum::{extract::{Host, Query, State}, response::{IntoResponse, Json}};
+use axum::{extract::{Host, State}, response::{IntoResponse, Json}};
 use oauth2::CsrfToken;
 use oauth2::PkceCodeChallenge;
 use oauth2::{basic::BasicClient, reqwest::async_http_client, AuthorizationCode, PkceCodeVerifier, RedirectUrl, Scope, TokenResponse};
@@ -86,12 +84,15 @@ pub async fn login_handler(
 }
 
 pub async fn oauth_return(
-    Query(mut params): Query<HashMap<String, String>>,
     State(app_state): State<AppState>,
     Host(hostname): Host,
+    Json(params): Json<common::OAuthReturn>,
 ) -> Result<impl IntoResponse, AppError> {
-    let state = CsrfToken::new(params.remove("state").context("oauth missing state")?);
-    let code = AuthorizationCode::new(params.remove("code").context("oauth missing code")?);
+    // let state = CsrfToken::new(params.remove("state").context("oauth missing state")?);
+    // let code = AuthorizationCode::new(params.remove("code").context("oauth missing code")?);
+
+    let state = CsrfToken::new(params.state);
+    let code = AuthorizationCode::new(params.code);
 
     let oauth_state: OAuth2State = app_state
         .db
@@ -126,7 +127,7 @@ pub async fn oauth_return(
 
     let mut result = app_state
         .db
-        .query("SELECT * FROM user where email=$email;")
+        .query("SELECT * FROM people where email=$email;")
         .bind(("email", &user_info.email))
         .await?;
 
@@ -136,7 +137,7 @@ pub async fn oauth_return(
         Some(person) => person,
         None => app_state
             .db
-            .create("user")
+            .create("person")
             .content(NewPerson {
                 given_name: user_info.given_name,
                 family_name: user_info.family_name,

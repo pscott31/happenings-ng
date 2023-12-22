@@ -6,7 +6,7 @@ mod middleware;
 mod server;
 
 use anyhow::anyhow;
-use axum::{extract::{Path, Query, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
+use axum::{extract::{Path, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
 use config::Config;
 use dotenv::dotenv;
 use error_handling::AppError;
@@ -82,12 +82,12 @@ fn build_app(db: Surreal<Any>, config: Config) -> Router {
         .route("/app.wasm", get(wasm_handler))
         .route("/app.js", get(js_handler))
         .route("/static/*path", get(static_handler))
-        .route("/api/auth/oauth/link", get(auth::oauth::login_handler))
+        .route("/api/auth/oauth/link", post(auth::oauth::login_handler))
         .route("/api/auth/password/signin", post(auth::password::signin))
         .route("/api/auth/password/signup", post(auth::password::signup))
-        .route("/api/user_exists", get(user_exists_handler))
-        .route("/api/user", get(user_handler)) // TODO: rename current_user?
-        .route("/api/auth/oauth/return", get(auth::oauth::oauth_return))
+        .route("/api/user_exists", post(user_exists_handler))
+        .route("/api/user", post(user_handler)) // TODO: rename current_user?
+        .route("/api/auth/oauth/return", post(auth::oauth::oauth_return))
         .fallback(get(root_handler))
         .with_state(AppState { db, config })
 }
@@ -130,7 +130,7 @@ async fn user_handler(
 
 async fn user_exists_handler(
     State(app_state): State<AppState>,
-    query: Query<common::Email>,
+    query: Json<common::Email>,
 ) -> Result<impl IntoResponse, AppError> {
     let people: Vec<db::Person> = app_state
         .db

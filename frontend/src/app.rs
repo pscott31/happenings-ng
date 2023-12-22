@@ -1,6 +1,5 @@
 use leptos::*;
 use leptos_router::*;
-use logging::*;
 
 use super::navbar::NavBar;
 use super::not_found::NotFound;

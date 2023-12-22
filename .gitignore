@@ -1,4 +1,5 @@
 target
+target_vscode
 .DS_Store
 .VSCodeCounter
 happenings.toml
