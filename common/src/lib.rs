@@ -41,6 +41,16 @@ pub struct NewUser {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct User {
+    pub id: String,
+    pub given_name: String,
+    pub family_name: String,
+    // pub picture: String,
+    pub email: String,
+    pub phone: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum CreateUserResponse {
     Error(ErrorResponse),
     Ok(),

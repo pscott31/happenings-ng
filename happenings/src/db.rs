@@ -23,7 +23,7 @@ pub struct NewPerson {
     pub credentials: Credentials,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct Person {
     pub id: Thing,
@@ -40,3 +40,4 @@ pub struct Record {
     #[allow(dead_code)]
     pub id: Thing,
 }
+

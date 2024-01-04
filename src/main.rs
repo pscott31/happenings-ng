@@ -1,16 +1,17 @@
 mod auth;
-mod config;
-mod db;
 mod error_handling;
 mod middleware;
 mod server;
+mod server_fns;
 
+use crate::error_handling::AppError;
 use anyhow::anyhow;
 use axum::{extract::{Path, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
-use config::Config;
 use dotenv::dotenv;
-use error_handling::AppError;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
+use happenings::config::Config;
+use happenings::db;
+use happenings::AppState;
 use rust_embed::RustEmbed;
 use surrealdb::{engine::any::{connect, Any}, opt::auth::Root, Surreal};
 use tracing::*;
@@ -52,7 +53,7 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
     info!("connecting to database at {:?}", &config.db.endpoint);
     let db = connect(&config.db.endpoint).await?;
 
-    if let Some(config::Credentials::Root {
+    if let Some(happenings::config::Credentials::Root {
         ref username,
         ref password,
     }) = config.db.credentials
@@ -70,12 +71,6 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
     Ok(db)
 }
 
-#[derive(Clone)]
-struct AppState {
-    config: Config,
-    db: Surreal<Any>,
-}
-
 fn build_app(db: Surreal<Any>, config: Config) -> Router {
     Router::new()
         .route("/", get(root_handler))
@@ -88,8 +83,9 @@ fn build_app(db: Surreal<Any>, config: Config) -> Router {
         .route("/api/user_exists", post(user_exists_handler))
         .route("/api/user", post(user_handler)) // TODO: rename current_user?
         .route("/api/auth/oauth/return", post(auth::oauth::oauth_return))
+        .route("/api/*fn_name", post(server_fns::handle_server_fns))
         .fallback(get(root_handler))
-        .with_state(AppState { db, config })
+        .with_state(happenings::AppState { db, config })
 }
 
 async fn user_handler(
@@ -179,8 +175,8 @@ async fn static_handler(Path(path): Path<String>) -> impl IntoResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Config;
     use ::axum_test::TestServer;
+    use happenings::config::Config;
 
     #[tokio::test]
     async fn it_works() -> anyhow::Result<()> {
@@ -237,7 +233,7 @@ mod tests {
 
     fn test_config() -> Config {
         Config {
-            db: config::DB {
+            db: happenings::config::DB {
                 endpoint: "mem://".to_string(),
                 credentials: None,
                 namespace: "test".to_string(),

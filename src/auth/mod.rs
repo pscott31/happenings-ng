@@ -1,9 +1,10 @@
 pub mod oauth;
 pub mod password;
 
-use crate::{db::*, error_handling::AppError};
+use crate::error_handling::AppError;
 use anyhow::anyhow;
 use chrono::Duration;
+use happenings::db::*;
 use std::ops::Add;
 use surrealdb::{engine::any::Any, sql::Thing, Surreal};
 

@@ -1,5 +1,5 @@
-use crate::config;
 use crate::AppState;
+use happenings::config;
 
 use crate::db::*;
 use crate::error_handling::*;
@@ -82,6 +82,8 @@ pub async fn login_handler(
 
     Ok(Json(common::LoginResponse { url: authorize_url }))
 }
+
+#[cfg(not(target_arch = "wasm32"))]
 
 pub async fn oauth_return(
     State(app_state): State<AppState>,

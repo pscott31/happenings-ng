@@ -4,6 +4,7 @@ mod error_handling;
 mod navbar;
 mod not_found;
 mod sign_in;
+mod users;
 
 use app::App;
 use leptos::*;
@@ -15,3 +16,4 @@ pub fn mount_app() {
     console_error_panic_hook::set_once();
     leptos::mount_to_body(|| view! { <App/> })
 }
+

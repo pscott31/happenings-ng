@@ -4,6 +4,7 @@ use leptos_router::*;
 use super::navbar::NavBar;
 use super::not_found::NotFound;
 use crate::sign_in::{OAuthReturn, SignIn};
+use crate::users::Users;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignInStatus {
@@ -23,6 +24,7 @@ pub fn App() -> impl IntoView {
       <Router>
         <Routes>
           <Route path="/" view=|| with_navbar(Home())/>
+          <Route path="/users" view=|| with_navbar(Users())/>
           <Route path="/oauth_return" view=OAuthReturn/>
           <Route path="/*any" view=NotFound/>
         </Routes>
