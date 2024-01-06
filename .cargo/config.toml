@@ -1,2 +1,2 @@
-[unstable]
- bindeps = true
+# [unstable]
+#  bindeps = true

@@ -1,10 +1,17 @@
 mod app;
+mod book_event;
 mod components;
+mod email_field;
 mod error_handling;
+mod events;
+mod field;
+mod icon_button;
 mod navbar;
 mod not_found;
+mod reactive_list;
 mod sign_in;
 mod users;
+mod utils;
 
 use app::App;
 use leptos::*;

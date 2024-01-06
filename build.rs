@@ -9,6 +9,25 @@ fn main() -> anyhow::Result<()> {
     let debug = env::var("PROFILE")? == "debug";
 
     let cargo = env::var("CARGO")?;
+
+    // for (key, value) in env::vars() {
+    //     println!("cargo:warning={key}:{value}");
+    // }
+
+    // This is a bit horrible; cargo sets a bunch of environment variables that
+    // we don't want to pass to the `cargo` invocation below; in parcicular the
+    // CARGO_ENCODED_RUSTFLAGS causes us to try and use 'ldd' even when it's configured
+    // in cargo config only for [target.x86_64-unknown-linux-gnu] when linking WASM.
+    // Once build artificats for different targets work properly this build script will not be needed
+
+    let filtered_env: std::collections::HashMap<String, String> = env::vars()
+        .filter(|&(ref k, _)| !k.starts_with("CARGO"))
+        .collect();
+
+    // for (key, value) in filtered_env.iter() {
+    //     println!("cargo:warning=AFTER_{key}:{value}");
+    // }
+
     let fe_dir = out_dir.join("frontend");
     println!("cargo:rerun-if-changed=frontend");
     let output = Command::new(cargo)
@@ -18,14 +37,12 @@ fn main() -> anyhow::Result<()> {
         .arg("--target-dir")
         .arg(fe_dir.as_os_str())
         .stderr(Stdio::inherit())
+        .env_clear()
+        .envs(&filtered_env)
         .output()
         .context("failed call `cargo` build for wasm")?;
 
     ensure!(output.status.success(), "`cargo` invocation failed");
-
-    // for (key, value) in env::vars() {
-    //     println!("cargo:warning {key}: {value}");
-    // }
 
     let wasm_in = fe_dir.join("wasm32-unknown-unknown/debug/frontend.wasm");
     // let wasm_in = env::var("CARGO_CDYLIB_FILE_FRONTEND").map(PathBuf::from)?;

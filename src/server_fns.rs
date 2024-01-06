@@ -6,8 +6,9 @@ use axum::response::{IntoResponse, Response};
 use axum_macros::debug_handler;
 use leptos::leptos_server::server_fn_by_path;
 use leptos::server_fn::{Encoding, Payload};
-use leptos::{provide_context, ServerFnError};
+use leptos::{create_runtime, provide_context, ServerFnError};
 use once_cell::sync::OnceCell;
+use scopeguard::defer;
 use std::thread::available_parallelism;
 use tokio_util::task::LocalPoolHandle;
 
@@ -36,6 +37,10 @@ impl IntoResponse for Fail {
             Fail::BadServerPath(p) => format!("no server function '{p}' found"),
             Fail::ServerFnError(e) => e.to_string(),
             Fail::JoinError(e) => e.to_string(),
+            Fail::NoAuthHeader() => "no authorization header found".to_string(),
+            Fail::NoSession() => "no session found".to_string(),
+            Fail::SessionExpired() => "session expired".to_string(),
+            Fail::DbError(e) => e.to_string(),
         };
 
         Response::builder()
@@ -44,15 +49,39 @@ impl IntoResponse for Fail {
             .unwrap()
     }
 }
+pub async fn check_session(
+    app_state: State<AppState>,
+    headers: HeaderMap,
+) -> Result<Session, Fail> {
+    let session_id = match headers.get("Authorization") {
+        Some(header) => header.to_str()?,
+        None => return Err(NoAuthHeader),
+    };
+
+    let session: db::Session = app_state.db.select(("session", session_id)).await?;
+
+    match session {
+        Some(session) => session,
+        None => return Err(Fail::NoSession),
+    };
+
+    if chrono::Utc::now() > session.expires_at {
+        return Err(Fail::SessionExpired);
+    }
+    Ok(session)
+}
 
 #[debug_handler]
 pub async fn handle_server_fns(
     Path(fn_name): Path<String>,
-    // headers: HeaderMap,
+    headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AppState>,
     req: Request<Body>,
 ) -> impl IntoResponse {
+    let session = get_session(app_state, headers).await?;
+    provide_context(session.ok());
+
     let fn_name = fn_name
         .strip_prefix('/')
         .map(|fn_name| fn_name.to_string())
@@ -60,6 +89,10 @@ pub async fn handle_server_fns(
 
     // The future returned server_fn_by_path is !Send, so we can't just await it
     let task = || async move {
+        let runtime = create_runtime();
+        defer! {
+            runtime.dispose();
+        }
         provide_context(app_state);
         let server_fn = server_fn_by_path(fn_name.as_str()).ok_or(Fail::BadServerPath(fn_name))?;
 

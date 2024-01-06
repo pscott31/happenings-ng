@@ -223,7 +223,7 @@ mod tests {
         assert!(resp.json::<bool>());
 
         // Should be able to log in now.
-        let resp = server.post("/api/auth/password/signup").json(&creds).await;
+        let resp = server.post("/api/auth/password/signin").json(&creds).await;
         assert_eq!(resp.status_code(), StatusCode::OK);
 
         // assert_true()
