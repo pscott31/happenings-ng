@@ -1,14 +1,9 @@
-use crate::tickets::{TicketType, TicketTypes};
-use crate::{db, AppState};
-
+use crate::ticket::{TicketType, TicketTypes};
 use chrono::{DateTime, Local, Utc};
 use derive_builder::Builder;
-use leptos::ServerFnError::ServerError;
-use leptos::{use_context, ServerFnError};
-use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
-
 use happenings_macro::generate_new;
+use leptos::ServerFnError;
+use serde::{Deserialize, Serialize};
 
 #[generate_new]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Builder)]
@@ -16,8 +11,8 @@ pub struct Event {
     pub id: String,
     pub name: String,
     pub tagline: String,
-    pub standard_ticket: TicketType,
-    pub other_tickets: Vec<TicketType>,
+    pub default_ticket_type: TicketType,
+    pub additional_ticket_types: Vec<TicketType>,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
 }
@@ -27,13 +22,21 @@ impl Event {
     pub fn end_local(&self) -> DateTime<Local> { self.end.into() }
     pub fn ticket_types(&self) -> TicketTypes {
         let mut all = Vec::new();
-        all.push(self.standard_ticket.clone());
-        all.extend(self.other_tickets.clone());
+        all.push(self.default_ticket_type.clone());
+        all.extend(self.additional_ticket_types.clone());
         all
     }
 }
 
 ////////////////////////// Functions that run on the server //////////////////////////////////////
+
+#[cfg(not(target_arch = "wasm32"))]
+cfg_if::cfg_if! {
+if #[cfg(not(target_arch = "wasm32"))] {
+    use crate::{db, AppState};
+    use leptos::use_context;
+    use leptos::ServerFnError::ServerError;
+}}
 
 #[leptos::server(CreateEvent, "/api", "Url", "create_event")]
 pub async fn new_event(e: NewEvent) -> Result<String, ServerFnError> {
@@ -108,7 +111,7 @@ mod tests {
         let id1 = new_event(ne1.clone()).await.unwrap();
         let id2 = new_event(ne2.clone()).await.unwrap();
 
-        let e1 = ne2.to_event(id1.clone());
+        let e1 = ne1.to_event(id1.clone());
         let e2 = ne2.to_event(id2.clone());
         let events = list_events().await.unwrap();
         assert_eq!(events.len(), 2);

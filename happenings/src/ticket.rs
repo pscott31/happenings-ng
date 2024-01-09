@@ -9,6 +9,17 @@ pub struct Ticket {
     pub dietary_requirements: String,
 }
 
+impl Ticket {
+    pub fn new(ticket_type: TicketType) -> Self {
+        Self {
+            ticket_type,
+            vegetarian: false,
+            gluten_free: false,
+            dietary_requirements: "".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct TicketType {
     pub name: String,

@@ -1,13 +1,8 @@
-pub mod bookings;
+pub mod booking;
 pub mod config;
 pub mod events;
 pub mod people;
-pub mod tickets;
-
-pub use bookings::*;
-pub use events::*;
-pub use people::*;
-pub use tickets::*;
+pub mod ticket;
 
 cfg_if::cfg_if! {
 if #[cfg(not(target_arch = "wasm32"))] {

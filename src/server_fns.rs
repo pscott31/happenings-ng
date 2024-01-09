@@ -1,8 +1,12 @@
-use crate::AppState;
+use crate::db::Session;
+use crate::{db, AppState};
 use axum::body::{Body, Bytes};
 use axum::extract::{Path, RawQuery, Request, State};
+use axum::http::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::CookieJar;
 use axum_macros::debug_handler;
 use leptos::leptos_server::server_fn_by_path;
 use leptos::server_fn::{Encoding, Payload};
@@ -25,10 +29,16 @@ fn get_task_pool() -> LocalPoolHandle {
         .clone()
 }
 
-enum Fail {
+pub enum Fail {
     BadServerPath(String),
     ServerFnError(ServerFnError),
     JoinError(tokio::task::JoinError),
+    BadAuthHeader,
+    NoAuthHeader,
+    NoSession,
+    NoAuthCookie,
+    SessionExpired,
+    DbError(surrealdb::Error),
 }
 
 impl IntoResponse for Fail {
@@ -37,9 +47,11 @@ impl IntoResponse for Fail {
             Fail::BadServerPath(p) => format!("no server function '{p}' found"),
             Fail::ServerFnError(e) => e.to_string(),
             Fail::JoinError(e) => e.to_string(),
-            Fail::NoAuthHeader() => "no authorization header found".to_string(),
-            Fail::NoSession() => "no session found".to_string(),
-            Fail::SessionExpired() => "session expired".to_string(),
+            Fail::NoAuthHeader => "no authorization header found".to_string(),
+            Fail::NoAuthCookie => "no authorization cookie found".to_string(),
+            Fail::BadAuthHeader => "authorization header malformed".to_string(),
+            Fail::NoSession => "no session found".to_string(),
+            Fail::SessionExpired => "session expired".to_string(),
             Fail::DbError(e) => e.to_string(),
         };
 
@@ -49,18 +61,30 @@ impl IntoResponse for Fail {
             .unwrap()
     }
 }
-pub async fn check_session(
-    app_state: State<AppState>,
+pub async fn get_session(
+    app_state: &AppState,
     headers: HeaderMap,
+    jar: CookieJar,
 ) -> Result<Session, Fail> {
-    let session_id = match headers.get("Authorization") {
-        Some(header) => header.to_str()?,
-        None => return Err(NoAuthHeader),
+    // TODO: Figure out if we're going to use headers or cookies
+    // let session_id = match headers.get("Authorization") {
+    //     Some(header) => header.to_str().map_err(|e| Fail::BadAuthHeader)?,
+    //     None => return Err(Fail::NoAuthHeader),
+    // };
+
+    let Some(session_cookie) = jar.get("session_id") else {
+        return Err(Fail::NoAuthCookie);
     };
 
-    let session: db::Session = app_state.db.select(("session", session_id)).await?;
+    let session_id = session_cookie.value();
 
-    match session {
+    let session: Option<db::Session> = app_state
+        .db
+        .select(("session", session_id))
+        .await
+        .map_err(|e| Fail::DbError(e))?;
+
+    let session = match session {
         Some(session) => session,
         None => return Err(Fail::NoSession),
     };
@@ -77,11 +101,9 @@ pub async fn handle_server_fns(
     headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AppState>,
+    jar: CookieJar,
     req: Request<Body>,
 ) -> impl IntoResponse {
-    let session = get_session(app_state, headers).await?;
-    provide_context(session.ok());
-
     let fn_name = fn_name
         .strip_prefix('/')
         .map(|fn_name| fn_name.to_string())
@@ -93,7 +115,13 @@ pub async fn handle_server_fns(
         defer! {
             runtime.dispose();
         }
-        provide_context(app_state);
+        provide_context(app_state.clone());
+        if let Ok(session) = get_session(&app_state, headers, jar).await {
+            if let Ok(person) = happenings::people::get_person(session.user.to_string()).await {
+                provide_context(person);
+            }
+        }
+
         let server_fn = server_fn_by_path(fn_name.as_str()).ok_or(Fail::BadServerPath(fn_name))?;
 
         let (_parts, body) = req.into_parts();
