@@ -45,9 +45,10 @@
   "FaPhoneSolid",
   "FaBasketShoppingSolid",
  ] }
-indexmap = "2.1.0"
-uuid = "1.6.1"
-rust_decimal_macros = "1.33.1"
-email_address = "0.2.4"
-phonenumber = "0.3.3"
-ticket = "0.2.0"
+ indexmap = "2.1.0"
+ uuid = "1.6.1"
+ rust_decimal_macros = "1.33.1"
+ email_address = "0.2.4"
+ phonenumber = "0.3.3"
+wasm-cookies = "0.2.1"
+ # ticket = "0.2.0"

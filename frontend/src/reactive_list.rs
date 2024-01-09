@@ -2,19 +2,40 @@ use indexmap::IndexMap;
 use leptos::*;
 use uuid::Uuid;
 
-pub struct ReactiveList<T> (IndexMap<Uuid, RwSignal<T>>) where T:'static
+#[derive(Clone, Debug)]
+pub struct ReactiveList<T>(IndexMap<Uuid, RwSignal<T>>)
+where
+    T: 'static;
 
-impl From<ReactiveList<T>> for Vec<T> {
-    fn from(list: ReactiveList<T>) -> Self { list.iter().map(|(_, v)| v.get()).collect() }
+impl<T> ReactiveList<T> {
+    pub fn new() -> Self { ReactiveList(IndexMap::new()) }
+    pub fn iter(&self) -> impl Iterator<Item = (&Uuid, &RwSignal<T>)> + '_ { self.0.iter() }
+}
+
+impl<T> From<ReactiveList<T>> for Vec<T>
+where
+    T: Clone,
+{
+    fn from(list: ReactiveList<T>) -> Self { list.0.iter().map(|(_, v)| v.get()).collect() }
 }
 
 impl<T> From<Vec<T>> for ReactiveList<T> {
     fn from(list: Vec<T>) -> Self {
-        list.iter()
-            .map(|t| (Uuid::new_v4(), create_rw_signal(t)))
-            .collect()
+        ReactiveList(
+            list.into_iter()
+                .map(|t| (Uuid::new_v4(), create_rw_signal(t)))
+                .collect(),
+        )
     }
 }
+
+// impl<T> IntoIterator for ReactiveList<T> {
+//     type Item = (Uuid, RwSignal<T>);
+//     type IntoIter = <IndexMap<uuid::Uuid, leptos::RwSignal<T>> as IntoIterator>::IntoIter;
+
+//     fn into_iter(self) -> Self::IntoIter { self.0.iter() }
+// }
+
 pub trait TrackableList<T> {
     fn tracked_push(&self, guest: T);
     fn tracked_remove(&self, uid: Uuid);
@@ -28,19 +49,19 @@ where
 {
     fn tracked_push(&self, guest: T) {
         self.update(|gs| {
-            gs.insert(Uuid::new_v4(), create_rw_signal::<T>(guest));
+            gs.0.insert(Uuid::new_v4(), create_rw_signal::<T>(guest));
         });
     }
 
     fn tracked_remove(&self, uid: Uuid) {
         self.update(|gs| {
-            gs.shift_remove(&uid);
+            gs.0.shift_remove(&uid);
         });
     }
 
     fn tracked_insert(&self, uid: Uuid, new: T) {
         self.update(|gs| {
-            gs.insert(uid, create_rw_signal::<T>(new));
+            gs.0.insert(uid, create_rw_signal::<T>(new));
         });
     }
 }

@@ -1,4 +1,4 @@
-use happenings::tickets::{TicketType, TicketTypes};
+use happenings::ticket::{TicketType, TicketTypes};
 use leptos::logging::*;
 use leptos::*;
 
@@ -26,13 +26,18 @@ pub fn TicketType(
         })
         .collect_view();
 
+    let on_change = move |ev| {
+        log!("{}", event_target_value(&ev));
+        ticket_types()
+            .into_iter()
+            .find(|tt| tt.name == event_target_value(&ev))
+            .map(set);
+    };
+
     view! {
       <div class="control">
         <div class="select">
-          <select on:change=move |ev| {
-              log!("{}", event_target_value(& ev));
-              ticket_types().find(event_target_value(&ev)).map(set);
-          }>{options}</select>
+          <select on:change=on_change>{options}</select>
         </div>
       </div>
     }

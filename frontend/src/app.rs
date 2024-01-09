@@ -6,9 +6,9 @@ use super::navbar::NavBar;
 use super::not_found::NotFound;
 use crate::book_event::BookingPage;
 use crate::events::Events;
-use crate::sign_in::{check_user, OAuthReturn, SignIn};
+use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
-use happenings::people::{get_logged_in_person, get_person, Person};
+use happenings::people::{get_logged_in_person, Person};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignInStatus {
@@ -19,8 +19,8 @@ pub enum SignInStatus {
 }
 #[derive(Copy, Clone)]
 pub struct SignInSignal(pub RwSignal<SignInStatus>);
-#[derive(Copy, Clone)]
-pub struct PersonSignal(pub Signal<Person>);
+// #[derive(Copy, Clone)]
+pub type MaybePersonSignal = Signal<Option<Person>>;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -28,7 +28,8 @@ pub fn App() -> impl IntoView {
 
     let (get_session, _, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
     let user_info = create_resource(get_session, |_| get_logged_in_person());
-    let provide_context()
+    let maybe_person = Signal::derive(move || user_info.get().and_then(|r| r.ok()));
+    provide_context::<MaybePersonSignal>(maybe_person);
     view! {
       <Router>
         <Routes>

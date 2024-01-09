@@ -411,6 +411,13 @@ pub async fn check_user(
 }
 
 fn store_session(session: common::Session) {
+    // TODO: Decide properly if we're using local storage or cookies
+    #[cfg(target_arch = "wasm32")]
+    wasm_cookies::set(
+        "session_id",
+        session.id.as_ref(),
+        &wasm_cookies::CookieOptions::default(),
+    );
     let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
     log!("{:?}", &session);
     set_state(Some(session));

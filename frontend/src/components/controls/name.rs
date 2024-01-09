@@ -4,7 +4,8 @@ use leptos_icons::{FaIcon::*, Icon};
 #[component]
 pub fn Name(
     #[prop(into)] get: MaybeSignal<String>,
-    #[prop(into)] set: Callback<String>,
+    #[prop(into, default = Callback::new(|_|{}))] set: Callback<String>,
+    #[prop(into, default = MaybeSignal::Static(false))] disabled: MaybeSignal<bool>,
 ) -> impl IntoView {
     let name_err = {
         let get = get.clone();
@@ -27,6 +28,7 @@ pub fn Name(
           placeholder="Name"
           prop:value=get
           on:change=move |ev| set(event_target_value(&ev))
+          disabled=disabled()
         />
         <span class="icon is-small is-left">
           <Icon icon=Icon::from(FaUserSolid)/>
