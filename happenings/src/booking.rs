@@ -64,7 +64,7 @@ mod backend {
             payments: Vec::new(),
         };
 
-        let mut bs: Vec<Booking> = app_state
+        let mut bs: Vec<DbBooking> = app_state
             .db
             .create("booking")
             .content(b)
@@ -74,7 +74,7 @@ mod backend {
         let b = bs
             .pop()
             .ok_or(ServerError("failed to create new booking".to_string()))?;
-        return Ok(b);
+        return Ok(b.into());
     }
 }
 
