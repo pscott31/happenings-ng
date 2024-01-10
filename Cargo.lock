@@ -1860,11 +1860,13 @@ dependencies = [
  "mime_guess",
  "oauth2",
  "once_cell",
+ "phonenumber",
  "rand",
  "reqwest",
  "rust-embed",
  "rust_decimal",
  "rust_decimal_macros",
+ "sanitizer",
  "scopeguard",
  "serde",
  "serde_json",
@@ -4278,6 +4280,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "sanitizer"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "319ea14c96a755fbf9394ec4e59dd9608db49b3cc08f73fb41cc5af484b653bd"
+dependencies = [
+ "heck 0.3.3",
+ "num-traits",
+ "paste",
+ "phonenumber",
+ "sanitizer_macros",
+]
+
+[[package]]
+name = "sanitizer_macros"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b514b45db36d69fa5a93f2b11c6aa682654eaccda5bf09062d3e639f4c2bd0c5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]

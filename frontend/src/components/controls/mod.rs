@@ -7,9 +7,9 @@ mod ticket;
 mod ticket_type;
 
 pub use checkbox::*;
-pub use email::*;
+// pub use email::*;
 pub use name::*;
-pub use phonenumber::*;
+// pub use phonenumber::*;
 pub use text::*;
 pub use ticket::*;
 pub use ticket_type::*;

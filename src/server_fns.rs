@@ -1,7 +1,7 @@
 use crate::db::Session;
 use crate::{db, AppState};
 use axum::body::{Body, Bytes};
-use axum::extract::{Path, RawQuery, Request, State};
+use axum::extract::{Host, Path, RawQuery, Request, State};
 use axum::http::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -101,6 +101,7 @@ pub async fn handle_server_fns(
     headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AppState>,
+    host: Host,
     jar: CookieJar,
     req: Request<Body>,
 ) -> impl IntoResponse {
@@ -116,8 +117,9 @@ pub async fn handle_server_fns(
             runtime.dispose();
         }
         provide_context(app_state.clone());
+        provide_context(host);
         if let Ok(session) = get_session(&app_state, headers, jar).await {
-            if let Ok(person) = happenings::people::get_person(session.user.to_string()).await {
+            if let Ok(person) = happenings::person::get_person(session.user.to_string()).await {
                 provide_context(person);
             }
         }

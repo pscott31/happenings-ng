@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use happenings::events::{list_events, Event};
+use happenings::event::{list_events, Event};
 use leptos::*;
 use leptos_struct_table::*;
 use serde::{Deserialize, Serialize};
@@ -72,7 +72,7 @@ impl From<Event> for EventRow {
 #[component]
 pub fn Events() -> impl IntoView {
     let rows = create_rw_signal::<Vec<EventRow>>(vec![]);
-    let r = create_resource(
+    let _res = create_resource(
         || (),
         move |_| async move {
             let doofers: Vec<EventRow> = list_events()

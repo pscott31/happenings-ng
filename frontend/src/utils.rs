@@ -4,12 +4,12 @@ use leptos::*;
 pub struct OptionalMaybeSignal<T: 'static>(Option<MaybeSignal<T>>);
 
 impl<T: Clone> OptionalMaybeSignal<T> {
-    pub fn or<D: Into<MaybeSignal<T>>>(self, default: D) -> MaybeSignal<T> {
-        match self.0 {
-            Some(maybe_signal) => maybe_signal,
-            None => default.into(),
-        }
-    }
+    // pub fn or<D: Into<MaybeSignal<T>>>(self, default: D) -> MaybeSignal<T> {
+    //     match self.0 {
+    //         Some(maybe_signal) => maybe_signal,
+    //         None => default.into(),
+    //     }
+    // }
 
     pub fn or_default(self) -> MaybeSignal<T>
     where

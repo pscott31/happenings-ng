@@ -3,9 +3,9 @@ use crate::components::controls::*;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
-use happenings::booking::CreateBooking;
-use happenings::events::{get_event, Event};
-use happenings::people::Person;
+use happenings::booking::{CreateBooking, CreatePaymentLink};
+use happenings::event::{get_event, Event};
+use happenings::person::Person;
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
@@ -95,6 +95,8 @@ pub fn NewBookingForPerson(
     };
 
     let create_booking = create_server_action::<CreateBooking>();
+    let create_payment_link = create_server_action::<CreatePaymentLink>();
+
     let on_submit = move || {
         let booking = CreateBooking {
             event: event().id.clone(),
@@ -104,39 +106,63 @@ pub fn NewBookingForPerson(
         create_booking.dispatch(booking);
     };
 
+    create_effect(move |_| {
+        create_booking.value().with(|x| {
+            if let Some(Ok(res)) = x {
+                create_payment_link.dispatch(CreatePaymentLink {
+                    booking_id: res.id.clone(),
+                    redirect_to: format!(
+                        "https://{}/booking/{}/payment-complete/",
+                        host.0, // TODO
+                        res.id.clone()
+                    ),
+                });
+                info!("{:?}", res)
+            }
+        })
+    });
+
+    create_effect(move |_| {
+        create_payment_link.value().with(|x| {
+            if let Some(Ok(res)) = x {
+                info!("{:?}", res)
+            }
+        })
+    });
+
     view! {
       <section class="section">
-        <ActionForm action=create_booking>
-          <input type="hidden" name="event" value=event().id/>
-          <input type="hidden" name="contact" value=person().id/>
-          <div class="container">
-            <h1 class="title">{event_name}</h1>
-            <p class="subtitle">{event_tagline}</p>
+        <p>{move || format!("{:?}", create_booking.value())}</p>
+        <input type="hidden" name="event" value=event().id/>
+        <input type="hidden" name="contact" value=person().id/>
+        <div class="container">
+          <h1 class="title">{event_name}</h1>
+          <p class="subtitle">{event_tagline}</p>
 
-            <div class="box">
-              <Field label=|| "Booking Contact">
-                <Name get=full_name disabled=true/>
-              </Field>
-              {badgers}
+          <div class="box">
+            <Field label=|| "Booking Contact">
+              <Name get=full_name disabled=true/>
+            </Field>
+            {badgers}
 
-              <div class="field is-grouped is-flex-wrap-wrap">
-                <p class="control">
-                  <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
-                    "Add Another Ticket"
-                  </IconButton>
-                </p>
-                <p class="control">
-                  <IconButton icon=FaBasketShoppingSolid color=Color::Primary on_click=on_submit>
-                    Pay Now
-                  </IconButton>
-                // <input type="submit" value="Pay Now"/>
+            <div class="field is-grouped is-flex-wrap-wrap">
+              <p class="control">
+                <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
+                  "Add Another Ticket"
+                </IconButton>
+              </p>
+              <p class="control">
+                <IconButton icon=FaBasketShoppingSolid color=Color::Primary on_click=on_submit>
+                  Pay Now
+                </IconButton>
+              // <input type="submit" value="Pay Now"/>
 
-                // {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
-                </p>
-              </div>
+              // {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
+              </p>
             </div>
           </div>
-        </ActionForm>
+        </div>
+
       </section>
     }
 

@@ -8,7 +8,7 @@ use crate::book_event::BookingPage;
 use crate::events::Events;
 use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
-use happenings::people::{get_logged_in_person, Person};
+use happenings::person::{get_logged_in_person, Person};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignInStatus {
