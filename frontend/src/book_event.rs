@@ -10,7 +10,9 @@ use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
 use leptos_router::{use_params_map, ActionForm};
+use leptos_use::use_window;
 use log::*;
+use url::Url;
 
 #[component]
 pub fn BookingPage() -> impl IntoView {
@@ -109,13 +111,15 @@ pub fn NewBookingForPerson(
     create_effect(move |_| {
         create_booking.value().with(|x| {
             if let Some(Ok(res)) = x {
+                // TODO: better way?
+                let window = web_sys::window().unwrap();
+                let url = Url::parse(window.location().href().unwrap().as_ref()).unwrap();
+                let mut redirect_url = url.clone();
+                redirect_url
+                    .set_path(format!("booking/{}/payment-complete", res.id.clone()).as_ref());
                 create_payment_link.dispatch(CreatePaymentLink {
                     booking_id: res.id.clone(),
-                    redirect_to: format!(
-                        "https://{}/booking/{}/payment-complete/",
-                        host.0, // TODO
-                        res.id.clone()
-                    ),
+                    redirect_to: redirect_url.to_string(),
                 });
                 info!("{:?}", res)
             }
