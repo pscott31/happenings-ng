@@ -1,11 +1,12 @@
 use crate::ticket::{TicketType, TicketTypes};
 use chrono::{DateTime, Local, Utc};
 use derive_builder::Builder;
-use happenings_macro::generate_new;
+use happenings_macro::{generate_db, generate_new};
 use leptos::ServerFnError;
 use serde::{Deserialize, Serialize};
 
 #[generate_new]
+#[generate_db]
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Builder)]
 pub struct Event {
     pub id: String,

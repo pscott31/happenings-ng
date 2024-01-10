@@ -1,7 +1,8 @@
 pub mod booking;
 pub mod config;
-pub mod events;
-pub mod people;
+pub mod event;
+pub mod person;
+pub mod square_api;
 pub mod ticket;
 
 cfg_if::cfg_if! {

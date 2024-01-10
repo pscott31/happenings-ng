@@ -26,6 +26,13 @@ pub struct DB {
     pub database: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct Square {
+    pub endpoint: String,
+    pub api_key: String,
+    pub location_id: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum Credentials {
     Root { username: String, password: String },
@@ -35,6 +42,7 @@ pub enum Credentials {
 pub struct Config {
     pub login: Login,
     pub db: DB,
+    pub square: Square,
 }
 
 impl Default for Config {
@@ -51,6 +59,13 @@ impl Default for Config {
                 namespace: "happenings".to_string(),
                 database: "happenings".to_string(),
             },
+            // TODO: make an option?
+            square: Square {
+                endpoint: "https://connect.squareupsandbox.com/v2".to_string(),
+                api_key: "".to_string(),
+                location_id: "".to_string(),
+            },
         }
     }
 }
+

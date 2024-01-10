@@ -1,9 +1,10 @@
-use happenings_macro::generate_new;
+use happenings_macro::{generate_db, generate_new};
 use serde::{Deserialize, Serialize};
 
 pub type PersonID = String;
 
 #[generate_new]
+#[generate_db]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[allow(dead_code)]
 pub struct Person {
