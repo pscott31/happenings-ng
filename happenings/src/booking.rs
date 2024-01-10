@@ -44,8 +44,11 @@ pub async fn create_booking(
 }
 
 #[leptos::server]
-pub async fn create_payment_link(booking_id: String) -> Result<String, ServerFnError> {
-    backend::create_payment_link(booking_id).await
+pub async fn create_payment_link(
+    booking_id: String,
+    redirect_to: String,
+) -> Result<String, ServerFnError> {
+    backend::create_payment_link(booking_id, redirect_to).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -55,6 +58,7 @@ mod backend {
     use crate::person::{DbPerson, Person};
     use crate::square_api;
     use crate::AppState;
+    use axum::extract::Host;
     use leptos::logging::warn;
     use leptos::ServerFnError::{self, ServerError};
     use phonenumber;
@@ -64,6 +68,7 @@ mod backend {
 
     enum Fail {
         NoState,
+        NoHost,
         InvalidID(String),
         DBError(surrealdb::Error),
         NotFound(String),
@@ -74,6 +79,7 @@ mod backend {
         fn from(f: Fail) -> Self {
             let msg = match f {
                 Fail::NoState => "app state not found".to_string(),
+                Fail::NoHost => "host not found".to_string(),
                 Fail::InvalidID(id) => format!("invalid id '{}'", id),
                 Fail::DBError(e) => format!("database error: {}", e.to_string()),
                 Fail::NotFound(id) => format!("no record with id '{}'", id),
@@ -116,9 +122,13 @@ mod backend {
         return Ok(b.into());
     }
 
-    pub async fn create_payment_link(booking_id: String) -> Result<String, ServerFnError> {
+    pub async fn create_payment_link(
+        booking_id: String,
+        redirect_to: String,
+    ) -> Result<String, ServerFnError> {
         info!("creating payment link for booking: {:?}", booking_id);
         let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
+        let host = use_context::<Host>().ok_or(Fail::NoHost)?;
         let id_thing =
             thing(booking_id.as_ref()).map_err(|_| Fail::InvalidID(booking_id.clone()))?;
         let booking: DbBooking = app_state
@@ -182,6 +192,7 @@ mod backend {
                 ask_for_shipping_address: false,
                 enable_coupon: false,
                 enable_loyalty: false,
+                redirect_url: redirect_to,
             }),
             pre_populated_data: Some(square_api::PrePopulatedData {
                 buyer_address: None,

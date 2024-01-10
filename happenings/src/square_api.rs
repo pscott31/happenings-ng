@@ -25,6 +25,7 @@ pub struct CheckoutOptions {
     pub ask_for_shipping_address: bool,
     pub enable_coupon: bool,
     pub enable_loyalty: bool,
+    pub redirect_url: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
