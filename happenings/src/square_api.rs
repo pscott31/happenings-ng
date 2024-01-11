@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,6 +96,26 @@ pub struct Order {
     pub total_tip_money: Money,
     pub total_service_charge_money: Money,
     pub net_amount_due_money: Money,
+    pub tenders: Vec<Tender>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Tender {
+    pub amount_money: Money,
+    pub id: String,
+    pub payment_id: String,
+    #[serde(rename = "type")]
+    pub type_: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RetrieveOrderRequest {
+    pub order_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RetrieveOrderResponse {
+    pub order: Order,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -126,13 +144,13 @@ pub struct LineItem {
     pub total_service_charge_money: Money,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Money {
     pub amount: i64,
     pub currency: Currency,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Currency {
     #[serde(rename = "GBP")]
     Gbp,

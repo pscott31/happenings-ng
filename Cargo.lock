@@ -1487,6 +1487,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
+ "url",
  "uuid",
  "validator",
  "wasm-bindgen",

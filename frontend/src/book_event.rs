@@ -3,15 +3,73 @@ use crate::components::controls::*;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
-use happenings::booking::{CreateBooking, CreatePaymentLink};
+use happenings::booking::{self, CreateBooking, CreatePaymentLink, Status};
 use happenings::event::{get_event, Event};
 use happenings::person::Person;
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
-use leptos_router::{use_params_map, Outlet, Route};
+use leptos_router::{use_params_map, NavigateOptions, Outlet, Route};
 use log::*;
 use url::Url;
+
+#[component]
+pub fn BookingRoot() -> impl IntoView {
+    view! { <Outlet/> }
+}
+
+#[component]
+pub fn Booking() -> impl IntoView {
+    let params = use_params_map();
+    let booking_id = move || params.with(|p| p.get("booking_id").cloned().unwrap_or_default());
+
+    view! {
+      <h1 class="title">Booking: {booking_id}</h1>
+      <Outlet/>
+    }
+}
+
+#[component]
+pub fn CheckPayment() -> impl IntoView {
+    let params = use_params_map();
+    let booking_id = move || {
+        params()
+            .get("booking_id")
+            .cloned()
+            .unwrap_or_default()
+            .to_string()
+    };
+
+    let status = create_resource(
+        booking_id,
+        |id| async move { booking::check_payment(id).await },
+    );
+
+    fn notify(msg: &str, color: Color) -> View {
+        view! { <div class=format!("notification has-text-centered {}", color)>{msg.to_owned()}</div> }
+            .into_view()
+    }
+
+    let status_view = move || match status.get() {
+        None => view! { <p>"Checking Payment Status..."</p> }.into_view(),
+        Some(Err(e)) => {
+            warn!("error checking payment: {:?}", e);
+            notify("Error checking payment", Color::Danger)
+        }
+        Some(Ok(booking)) => match booking.status {
+            Status::Paid => notify("All paid, thanks", Color::Success),
+            Status::PartiallyPaid => notify("Partial payment recieved", Color::Warning),
+            Status::Draft => notify("Expected payment not found", Color::Danger),
+            Status::Cancelled => notify("Order cancelled", Color::Danger),
+            Status::Accepted => notify("Payment expected on the door", Color::Warning),
+        },
+    };
+
+    view! {
+      {status_view}
+      <Outlet/>
+    }
+}
 
 #[component]
 pub fn BookingPage() -> impl IntoView {
@@ -49,12 +107,21 @@ pub fn NewBooking(#[prop(into)] event: Signal<Event>) -> impl IntoView {
     }
 }
 
-#[component]
-pub fn BookingRoutes() -> impl IntoView {
-    view! {
-      <Route path="" view=|| view! { <p>Default stuff</p> }/>
-      <Route path=":booking_id/payment" view=BookingPayment/>
-    }
+// #[component(transparent)]
+// pub fn BookingRoutes() -> impl IntoView {
+//     view! {
+//       <Route path="" view=|| view! { <p>Default stuff</p> }/>
+//       <Route path=":booking_id/payment" view=BookingPayment/>
+//     }
+// }
+
+fn url_for_path(path: String) -> String {
+    // TODO: must be a better way?better way?
+    let window = web_sys::window().unwrap();
+    let url = Url::parse(window.location().href().unwrap().as_ref()).unwrap();
+    let mut redirect_url = url.clone();
+    redirect_url.set_path(path.as_ref());
+    redirect_url.to_string()
 }
 
 #[component]
@@ -62,19 +129,22 @@ pub fn BookingPayment() -> impl IntoView {
     let params = use_params_map();
     let booking_id = params.with(|p| p.get("booking_id").cloned().unwrap_or_default());
 
-    view! { <p>Paying for {booking_id}</p> }
-    // let booking_res = create_resource(
-    //     move || booking_id.clone(),
-    //     move |id| happenings::booking::get_booking(id),
-    // );
+    let create_payment_link = create_server_action::<CreatePaymentLink>();
 
-    // {
-    //     move || match booking_res.get() {
-    //         None => view! { <p>"Loading..."</p> }.into_view(),
-    //         Some(Err(_e)) => view! { <p>"oops"</p> }.into_view(), //TODO
-    //         Some(Ok(booking)) => view! { <BookingPaymentForBooking booking=store_value(booking)/> }.into_view(),
-    //     }
-    // }
+    create_payment_link.dispatch(CreatePaymentLink {
+        booking_id: booking_id.clone(),
+        redirect_to: url_for_path(format!("booking/{}/check_payment", &booking_id)),
+    });
+
+    create_effect(move |_| {
+        create_payment_link.value().with(|x| {
+            if let Some(Ok(res)) = x {
+                web_sys::window().unwrap().location().replace(res).unwrap();
+            }
+        })
+    });
+
+    view! { <p>Paying for {booking_id}</p> }
 }
 
 #[component]
@@ -124,7 +194,8 @@ pub fn NewBookingForPerson(
     };
 
     let create_booking = create_server_action::<CreateBooking>();
-    let create_payment_link = create_server_action::<CreatePaymentLink>();
+
+    let navigate = leptos_router::use_navigate();
 
     let on_submit = move || {
         let booking = CreateBooking {
@@ -138,25 +209,10 @@ pub fn NewBookingForPerson(
     create_effect(move |_| {
         create_booking.value().with(|x| {
             if let Some(Ok(res)) = x {
-                // TODO: better way?
-                let window = web_sys::window().unwrap();
-                let url = Url::parse(window.location().href().unwrap().as_ref()).unwrap();
-                let mut redirect_url = url.clone();
-                redirect_url
-                    .set_path(format!("booking/{}/payment-complete", res.id.clone()).as_ref());
-                create_payment_link.dispatch(CreatePaymentLink {
-                    booking_id: res.id.clone(),
-                    redirect_to: redirect_url.to_string(),
-                });
-                info!("{:?}", res)
-            }
-        })
-    });
-
-    create_effect(move |_| {
-        create_payment_link.value().with(|x| {
-            if let Some(Ok(res)) = x {
-                info!("{:?}", res)
+                navigate(
+                    format!("/events/{}/book/{}/payment", res.event_id, res.id).as_ref(),
+                    Default::default(),
+                )
             }
         })
     });
@@ -186,9 +242,6 @@ pub fn NewBookingForPerson(
                 <IconButton icon=FaBasketShoppingSolid color=Color::Primary on_click=on_submit>
                   Pay Now
                 </IconButton>
-              // <input type="submit" value="Pay Now"/>
-
-              // {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
               </p>
               <Outlet/>
             </div>
@@ -197,190 +250,5 @@ pub fn NewBookingForPerson(
 
       </section>
     }
-
-    // // let person = store_value(person);
-    // // let event = store_value(event);
-    // let ticket_types = store_value(event().ticket_types());
-    // provide_context(ticket_types);
-
-    // // let booking = NewBooking::(event().clone(), person());
-    // // let booking = NewBookingBuilder::default()
-    // //     .event_id(event().id)
-    // //     .contact_id(person().id)
-    // //     .tickets(vec![Ticket::new(event().standard_ticket.clone())])
-    // //     .build();
-
-    // let booking = NewBooking {
-    //     event_id: event().id,
-    //     contact_id: person().id,
-    //     tickets: vec![Ticket::new(event().standard_ticket.clone())],
-    //     status: booking::Status::Draft,
-    //     payments: vec![],
-    // };
-
-    // let booking = create_rw_signal::<NewBooking>(booking);
-
-    // let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(booking().tickets.into());
-    // let (error_seen, set_error_seen) = create_signal::<usize>(0);
-
-    // let badgers = move || {
-    //     tickets.with(|gl| {
-    //         debug!("recomuting badger");
-    //         gl.iter()
-    //             .enumerate()
-    //             .map(|(i, (&uid, &gv))| {
-    //                 if i == 0 {
-    //                     view! {
-    //                       <Field label=move || format!("Ticket {}", { i + 1 })>
-    //                         <TicketControl ticket=gv/>
-    //                       </Field>
-    //                     }
-    //                 } else {
-    //                     view! {
-    //                       <Field label=move || {
-    //                           view! {
-    //                             {format!("Ticket {}", { i + 1 })}
-    //                             <br/>
-    //                             <IconButton on_click=move || set_tickets.tracked_remove(uid) icon=FaTrashSolid/>
-    //                           }
-    //                       }>
-    //                         <TicketControl ticket=gv/>
-    //                       </Field>
-    //                     }
-    //                 }
-    //             })
-    //             .collect_view()
-    //     })
-    // };
-
-    // let add_ticket = move || set_tickets.tracked_push(Ticket::new(event().standard_ticket.clone()));
-
-    // let build_booking = move || {
-    //     let tickets: Vec<Ticket> = tickets().into();
-    //     NewBooking {
-    //         tickets,
-    //         ..booking()
-    //     }
-    // };
-
-    // let create_order = create_action(move |_: &()| {
-    //     let new_booking = build_booking();
-    //     async move { create_booking(new_booking).await }
-    // });
-
-    // let create_order_pending = create_order.pending();
-    // let create_order_value = create_order.value();
-    // let create_order_text = move || match create_order_value() {
-    //     Some(Ok(v)) => format!("Order Created: id: {} ", v),
-    //     Some(Err(e)) => format!("Error Creating Order: {}", e.to_string()),
-    //     None => "Pending..".to_string(),
-    // };
-    // let (create_error_seen, set_create_error_seen) = create_signal::<usize>(0);
-
-    // let error_data = move || {
-    //     create_order.value().with(|x| {
-    //         if let Some(Err(err)) = x {
-    //             Some(err.to_string())
-    //         } else {
-    //             None
-    //         }
-    //     })
-    // };
-
-    // // let _navigate_to_payment = create_effect(move |_| {
-    // //     link_action.value().with(|x| {
-    // //         if let Some(Ok(res)) = x {
-    // //             let _ = window().location().set_href(res);
-    // //         }
-    // //     })
-    // // });
-
-    // // let validation = move || booking().validate();
-    // // let is_invalid = Signal::derive(move || validation().is_err());
-    // // let pending = link_action.pending();
-
-    // view! {
-    //   <section class="section">
-    //     <div class="container">
-    //       <h1 class="title">Little Stukeley Christmas Dinner</h1>
-    //       <p class="subtitle">Get your tickets for the final village event of the year!</p>
-
-    //       <div class="box">
-    //         <Field label=|| "Booking Contact">
-    //           <Name get=|| person().full_name() disabled=true/>
-    //           <Email get=|| person().email disabled=true/>
-    //         </Field>
-    //         <Field>
-    //           <PhoneNumber get=person().phone disabled=true/>
-    //         </Field>
-    //         // {badgers}
-
-    //         <div class="field is-grouped is-flex-wrap-wrap">
-    //           <p class="control">
-    //             <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
-    //               "Add Another Ticket"
-    //             </IconButton>
-    //           </p>
-
-    //         // <p class="control">
-    //         // <IconButton
-    //         // disabled=is_invalid
-    //         // icon=FaBasketShoppingSolid
-    //         // color=Color::Primary
-    //         // on_click=move || create_order.dispatch(())
-    //         // />
-    //         // // {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
-    //         // </p>
-    //         // <Show when=move || without_payment>
-    //         // <p class="control">
-    //         // <IconButton
-    //         // disabled=is_invalid
-    //         // icon=FaBasketShoppingSolid
-    //         // color=Color::Primary
-    //         // on_click=move || create_order.dispatch(())
-    //         // >
-    //         // {move || { if pending() { "Creating Order..." } else { "Create Order without Paying" } }}
-    //         // </IconButton>
-    //         // </p>
-    //         // </Show>
-    //         </div>
-    //       </div>
-    //     </div>
-
-    //   // <Modal
-    //   // active=move || error_data().is_some() && link_action.version()() != error_seen()
-    //   // close_requested=move || set_error_seen(link_action.version()())
-    //   // title="Oh dear"
-    //   // footer=move || {
-    //   // view! {}
-    //   // }
-    //   // >
-
-    //   // <div class="block">Something went wrong trying to generate a payment link for you to buy your tickets.</div>
-    //   // <div class="block">
-    //   // Terribly sorry about that. Could you please let me (Phil Scott) know and tell me what it says below and I will get it sorted
-    //   // </div>
-    //   // <div class="block">
-    //   // <pre style="white-space: pre-wrap;">{error_data}</pre>
-    //   // </div>
-    //   // </Modal>
-
-    //   // <Modal
-    //   // active=move || !create_order_pending() && create_order.version()() != create_error_seen()
-    //   // close_requested=move || set_create_error_seen(create_order.version()())
-    //   // title="Create Order Results"
-    //   // footer=move || {
-    //   // view! {}
-    //   // }
-    //   // >
-
-    //   // <div class="block">Hi Sally</div>
-    //   // <div class="block">
-    //   // <pre style="white-space: pre-wrap;">{create_order_text}</pre>
-    //   // </div>
-    //   // </Modal>
-
-    //   </section>
-    // }
 }
 

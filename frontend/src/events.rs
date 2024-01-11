@@ -29,6 +29,7 @@ pub struct EventRow {
     action: FieldGetter<String>,
 }
 
+#[allow(unused_variables)]
 #[component]
 pub fn ActionRenderer<F>(
     #[prop(into)] class: MaybeSignal<String>,

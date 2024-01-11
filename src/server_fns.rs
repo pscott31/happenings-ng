@@ -2,10 +2,9 @@ use crate::db::Session;
 use crate::{db, AppState};
 use axum::body::{Body, Bytes};
 use axum::extract::{Host, Path, RawQuery, Request, State};
-use axum::http::HeaderMap;
+// use axum::http::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
 use axum_macros::debug_handler;
 use leptos::leptos_server::server_fn_by_path;
@@ -33,8 +32,8 @@ pub enum Fail {
     BadServerPath(String),
     ServerFnError(ServerFnError),
     JoinError(tokio::task::JoinError),
-    BadAuthHeader,
-    NoAuthHeader,
+    // BadAuthHeader,
+    // NoAuthHeader,
     NoSession,
     NoAuthCookie,
     SessionExpired,
@@ -47,9 +46,9 @@ impl IntoResponse for Fail {
             Fail::BadServerPath(p) => format!("no server function '{p}' found"),
             Fail::ServerFnError(e) => e.to_string(),
             Fail::JoinError(e) => e.to_string(),
-            Fail::NoAuthHeader => "no authorization header found".to_string(),
+            // Fail::NoAuthHeader => "no authorization header found".to_string(),
+            // Fail::BadAuthHeader => "authorization header malformed".to_string(),
             Fail::NoAuthCookie => "no authorization cookie found".to_string(),
-            Fail::BadAuthHeader => "authorization header malformed".to_string(),
             Fail::NoSession => "no session found".to_string(),
             Fail::SessionExpired => "session expired".to_string(),
             Fail::DbError(e) => e.to_string(),
@@ -63,7 +62,7 @@ impl IntoResponse for Fail {
 }
 pub async fn get_session(
     app_state: &AppState,
-    headers: HeaderMap,
+    // headers: HeaderMap,
     jar: CookieJar,
 ) -> Result<Session, Fail> {
     // TODO: Figure out if we're going to use headers or cookies
@@ -98,7 +97,7 @@ pub async fn get_session(
 #[debug_handler]
 pub async fn handle_server_fns(
     Path(fn_name): Path<String>,
-    headers: HeaderMap,
+    // headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AppState>,
     host: Host,
@@ -118,7 +117,7 @@ pub async fn handle_server_fns(
         }
         provide_context(app_state.clone());
         provide_context(host);
-        if let Ok(session) = get_session(&app_state, headers, jar).await {
+        if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
             if let Ok(person) = happenings::person::get_person(session.user.to_string()).await {
                 provide_context(person);
             }
