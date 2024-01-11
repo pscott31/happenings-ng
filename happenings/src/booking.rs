@@ -46,6 +46,11 @@ impl Payment {
     }
 }
 
+#[leptos::server(endpoint = "get_booking")]
+pub async fn get_booking(booking_id: String) -> Result<Booking, ServerFnError> {
+    backend::get(booking_id).await
+}
+
 #[leptos::server(endpoint = "create_booking")]
 pub async fn create_booking(
     event: String,
@@ -109,6 +114,23 @@ mod backend {
             ServerError(msg)
         }
     }
+
+    pub async fn get(booking_id: String) -> Result<Booking, ServerFnError> {
+        let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
+
+        let id_thing =
+            thing(booking_id.as_ref()).map_err(|_| Fail::InvalidID(booking_id.clone()))?;
+
+        let booking: DbBooking = app_state
+            .db
+            .select(&id_thing)
+            .await
+            .map_err(|e| Fail::DBError(e))?
+            .ok_or(Fail::NotFound(booking_id.clone()))?;
+
+        Ok(booking.into())
+    }
+
     pub async fn create(
         event: String,
         contact: String,

@@ -13,6 +13,11 @@ use leptos_router::{use_params_map, NavigateOptions, Outlet, Route};
 use log::*;
 use url::Url;
 
+fn notify(msg: &str, color: Color) -> View {
+    view! { <div class=format!("notification has-text-centered {}", color)>{msg.to_owned()}</div> }
+        .into_view()
+}
+
 #[component]
 pub fn BookingRoot() -> impl IntoView {
     view! { <Outlet/> }
@@ -21,11 +26,34 @@ pub fn BookingRoot() -> impl IntoView {
 #[component]
 pub fn Booking() -> impl IntoView {
     let params = use_params_map();
-    let booking_id = move || params.with(|p| p.get("booking_id").cloned().unwrap_or_default());
+    let booking_id = move || {
+        params()
+            .get("booking_id")
+            .cloned()
+            .unwrap_or_default()
+            .to_string()
+    };
 
+    let booking = create_resource(
+        booking_id,
+        |id| async move { booking::get_booking(id).await },
+    );
+
+    match booking.get() {
+        None => view! { <p>Loading..</p> }.into_view(),
+        Some(Err(e)) => {
+            warn!("error loading booking: {:?}", e);
+            notify("Error loading booking", Color::Danger)
+        }
+        Some(Ok(booking)) => view! { <BookingSummary booking=store_value(booking)/> }.into_view(),
+    }
+}
+
+#[component]
+pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl IntoView {
     view! {
-      <h1 class="title">Booking: {booking_id}</h1>
-      <Outlet/>
+      <h1>id: {move || booking().id}</h1>
+      <h1>contact_id: {move || booking().contact_id}</h1>
     }
 }
 
@@ -44,11 +72,6 @@ pub fn CheckPayment() -> impl IntoView {
         booking_id,
         |id| async move { booking::check_payment(id).await },
     );
-
-    fn notify(msg: &str, color: Color) -> View {
-        view! { <div class=format!("notification has-text-centered {}", color)>{msg.to_owned()}</div> }
-            .into_view()
-    }
 
     let status_view = move || match status.get() {
         None => view! { <p>"Checking Payment Status..."</p> }.into_view(),
