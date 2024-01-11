@@ -4,7 +4,7 @@ use leptos_use::storage::{use_local_storage, JsonCodec};
 
 use super::navbar::NavBar;
 use super::not_found::NotFound;
-use crate::book_event::BookingPage;
+use crate::book_event::{BookingPage, BookingRoutes};
 use crate::events::Events;
 use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
@@ -36,7 +36,9 @@ pub fn App() -> impl IntoView {
           <Route path="/" view=|| with_navbar(Home())/>
           <Route path="/users" view=|| with_navbar(Users())/>
           <Route path="/events" view=|| with_navbar(Events())/>
-          <Route path="/events/:id/book" view=|| with_navbar(BookingPage())/>
+          <Route path="/events/:id/book" view=|| with_navbar(BookingPage())>
+            <BookingRoutes/>
+          </Route>
           <Route path="/oauth_return" view=OAuthReturn/>
           <Route path="/*any" view=NotFound/>
         </Routes>

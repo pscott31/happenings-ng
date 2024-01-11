@@ -9,8 +9,7 @@ use happenings::person::Person;
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
-use leptos_router::{use_params_map, ActionForm};
-use leptos_use::use_window;
+use leptos_router::{use_params_map, Outlet, Route};
 use log::*;
 use url::Url;
 
@@ -48,6 +47,34 @@ pub fn NewBooking(#[prop(into)] event: Signal<Event>) -> impl IntoView {
             view! { <NewBookingForPerson person=sp event=event/> }.into_view()
         }
     }
+}
+
+#[component]
+pub fn BookingRoutes() -> impl IntoView {
+    view! {
+      <Route path="" view=|| view! { <p>Default stuff</p> }/>
+      <Route path=":booking_id/payment" view=BookingPayment/>
+    }
+}
+
+#[component]
+pub fn BookingPayment() -> impl IntoView {
+    let params = use_params_map();
+    let booking_id = params.with(|p| p.get("booking_id").cloned().unwrap_or_default());
+
+    view! { <p>Paying for {booking_id}</p> }
+    // let booking_res = create_resource(
+    //     move || booking_id.clone(),
+    //     move |id| happenings::booking::get_booking(id),
+    // );
+
+    // {
+    //     move || match booking_res.get() {
+    //         None => view! { <p>"Loading..."</p> }.into_view(),
+    //         Some(Err(_e)) => view! { <p>"oops"</p> }.into_view(), //TODO
+    //         Some(Ok(booking)) => view! { <BookingPaymentForBooking booking=store_value(booking)/> }.into_view(),
+    //     }
+    // }
 }
 
 #[component]
@@ -163,6 +190,7 @@ pub fn NewBookingForPerson(
 
               // {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
               </p>
+              <Outlet/>
             </div>
           </div>
         </div>
