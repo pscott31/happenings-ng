@@ -259,7 +259,7 @@ mod backend {
 
         let parsed_res = res.json::<square_api::Welcome>().await?;
 
-        let updated_booking: DbBooking = app_state
+        let _: DbBooking = app_state
             .db
             .update(id_thing)
             .patch(PatchOp::replace(
@@ -305,6 +305,7 @@ mod backend {
         let payments: Vec<Payment> = parsed_res
             .order
             .tenders
+            .unwrap_or_default()
             .iter()
             .map(|t| Payment::Card {
                 amount: Decimal::new(t.amount_money.amount, 2),

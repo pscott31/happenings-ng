@@ -1,11 +1,11 @@
-use crate::app::MaybePersonSignal;
+use crate::app::{MaybePersonSignal, SignInSignal, SignInStatus};
 use crate::components::controls::*;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
-use happenings::booking::{self, CreateBooking, CreatePaymentLink, Status};
+use happenings::booking::{self, get_booking, CreateBooking, CreatePaymentLink, Status};
 use happenings::event::{get_event, Event};
-use happenings::person::Person;
+use happenings::person::{get_person, Person};
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
@@ -34,26 +34,82 @@ pub fn Booking() -> impl IntoView {
             .to_string()
     };
 
-    let booking = create_resource(
-        booking_id,
-        |id| async move { booking::get_booking(id).await },
-    );
+    let booking = create_resource(booking_id, |id| async move { get_booking(id).await });
 
-    match booking.get() {
+    let booking_summary = move || match booking.get() {
         None => view! { <p>Loading..</p> }.into_view(),
         Some(Err(e)) => {
             warn!("error loading booking: {:?}", e);
             notify("Error loading booking", Color::Danger)
         }
         Some(Ok(booking)) => view! { <BookingSummary booking=store_value(booking)/> }.into_view(),
+    };
+
+    view! {
+      {booking_summary}
+      <Outlet/>
     }
 }
 
 #[component]
 pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl IntoView {
+    let event = create_resource(booking, |b| async move { get_event(b.event_id).await });
+    let contact = create_resource(booking, |b| async move { get_person(b.contact_id).await });
+
+    let event_name = move || event.get().map(|er| er.map(|e| e.name).unwrap_or_default());
+    let event_tagline = move || {
+        event
+            .get()
+            .map(|er| er.map(|e| e.tagline).unwrap_or_default())
+    };
+
+    let full_name = Signal::derive(move || {
+        contact
+            .get()
+            .map(|cr| cr.map(|c| c.full_name()).unwrap_or_default())
+            .unwrap_or_default()
+    });
+
+    let tickets_view = move || {
+        booking
+            .get()
+            .tickets
+            .into_iter()
+            .enumerate()
+            .map(|(i, t)| {
+                let special = if t.dietary_requirements != "" {
+                    t.dietary_requirements
+                } else {
+                    "no special requirements".to_string()
+                };
+
+                view! {
+                  <Field label=move || format!("Ticket {}", { i + 1 })>
+                    <div class="control">
+                      <input class="input" disabled=true prop:value=t.ticket_type.name.clone()/>
+                      <Checkbox label="Vegetarian" get=store_value(t.vegetarian)/>
+                      <Checkbox label="Gluten Free" get=store_value(t.gluten_free)/>
+                      <Text placeholder="Other dietary requirements" get=special/>
+                    </div>
+                  </Field>
+                }
+            })
+            .collect_view()
+    };
+
     view! {
-      <h1>id: {move || booking().id}</h1>
-      <h1>contact_id: {move || booking().contact_id}</h1>
+      <section class="section">
+        <div class="container">
+          <Suspense fallback=move || view! { <p>"Loading..."</p> }>
+            <h1 class="title">{event_name}</h1>
+            <p class="subtitle">{event_tagline}</p>
+            <Field label=|| "Booking Contact">
+              <Name get=full_name disabled=true/>
+            </Field>
+            {tickets_view}
+          </Suspense>
+        </div>
+      </section>
     }
 }
 
@@ -114,8 +170,23 @@ pub fn BookingPage() -> impl IntoView {
     }
 }
 
+// Todo: This is a bit crappy
+pub fn require_login() {
+    let person = use_context::<MaybePersonSignal>().unwrap();
+    let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
+    create_effect(move |_| {
+        if person().is_none() && sign_in_signal.get() == SignInStatus::NotVisible {
+            sign_in_signal.set(SignInStatus::Welcome)
+        }
+        if person().is_some() && sign_in_signal.get() != SignInStatus::NotVisible {
+            sign_in_signal.set(SignInStatus::NotVisible)
+        }
+    });
+}
+
 #[component]
 pub fn NewBooking(#[prop(into)] event: Signal<Event>) -> impl IntoView {
+    require_login();
     let person = use_context::<MaybePersonSignal>().unwrap();
 
     // todo: reactive?
@@ -129,14 +200,6 @@ pub fn NewBooking(#[prop(into)] event: Signal<Event>) -> impl IntoView {
         }
     }
 }
-
-// #[component(transparent)]
-// pub fn BookingRoutes() -> impl IntoView {
-//     view! {
-//       <Route path="" view=|| view! { <p>Default stuff</p> }/>
-//       <Route path=":booking_id/payment" view=BookingPayment/>
-//     }
-// }
 
 fn url_for_path(path: String) -> String {
     // TODO: must be a better way?better way?
@@ -242,7 +305,6 @@ pub fn NewBookingForPerson(
 
     view! {
       <section class="section">
-        <p>{move || format!("{:?}", create_booking.value())}</p>
         <input type="hidden" name="event" value=event().id/>
         <input type="hidden" name="contact" value=person().id/>
         <div class="container">
@@ -270,7 +332,6 @@ pub fn NewBookingForPerson(
             </div>
           </div>
         </div>
-
       </section>
     }
 }

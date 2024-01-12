@@ -96,7 +96,7 @@ pub struct Order {
     pub total_tip_money: Money,
     pub total_service_charge_money: Money,
     pub net_amount_due_money: Money,
-    pub tenders: Vec<Tender>,
+    pub tenders: Option<Vec<Tender>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -6,7 +6,7 @@ pub fn Text(
     #[prop(into, optional)] label: Option<String>,
     #[prop(into, optional)] placeholder: Option<String>,
     #[prop(into)] get: MaybeSignal<String>,
-    #[prop(into)] set: Callback<String>,
+    #[prop(into, default=Callback::new(|x:String|{}))] set: Callback<String>,
     #[prop(into, optional)] icon: Option<FaIcon>,
 ) -> impl IntoView {
     let icon_view = icon.map(|i| {

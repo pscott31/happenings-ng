@@ -7,7 +7,7 @@ use serde::Serialize;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::js_sys::{Array, Reflect};
 
-use crate::app::{SignInSignal, SignInStatus};
+use crate::app::{SessionID, SignInSignal, SignInStatus};
 use crate::error_handling::*;
 
 #[component]
@@ -44,11 +44,13 @@ pub fn SignInPassword(email: String) -> impl IntoView {
     let (password, set_password) = create_signal("".to_string());
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
 
+    let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
+
     let submit = create_action(move |ep: &common::EmailPassword| {
         let ep = ep.clone();
         async move {
             let session: common::Session = call_api("api/auth/password/signin", &ep).await?;
-            store_session(session);
+            set_session_id(SessionID::Set(session.id));
             sign_in_signal.set(SignInStatus::NotVisible);
             Ok::<(), String>(())
         }
@@ -163,12 +165,14 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
     let password_mismatch = Signal::derive(move || password1() != password2());
     let is_invalid = password_mismatch;
 
+    let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
+
     let submit = create_action(move |new_user: &NewUser| {
         let new_user = new_user.clone();
         async move {
             call_api("api/auth/password/signup", &new_user).await?;
             let session: common::Session = call_api("api/auth/password/signin", &new_user).await?;
-            store_session(session);
+            set_session_id(SessionID::Set(session.id));
             sign_in_signal.set(SignInStatus::NotVisible);
             Ok::<(), String>(())
         }
@@ -270,8 +274,14 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
 #[component]
 pub fn SignInWelcome() -> impl IntoView {
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
-    let trigger_oauth_popup =
-        create_action(move |()| oauth_popup(move || sign_in_signal.set(SignInStatus::NotVisible)));
+    let set_session = use_context::<WriteSignal<SessionID>>().unwrap();
+
+    let trigger_oauth_popup = create_action(move |()| {
+        oauth_popup(move || {
+            set_session(SessionID::from_cookie());
+            sign_in_signal.set(SignInStatus::NotVisible);
+        })
+    });
     let (email, set_email) = create_signal("".to_string());
 
     let continue_pressed = create_action(move |email: &String| {
@@ -389,7 +399,8 @@ async fn validate_oauth_return() -> Result<(), AppError> {
         serde_qs::from_str(&query_str).map_err(|_| "unable to serialize payload")?;
     let session: common::Session = call_api("api/auth/oauth/return", payload).await?;
 
-    store_session(session);
+    let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
+    set_session_id(SessionID::Set(session.id));
 
     let opener = window().opener().unwrap();
     let post_message = Reflect::get(&opener, &JsValue::from_str("postMessage")).unwrap();
@@ -410,23 +421,26 @@ pub async fn check_user(
     Ok(person)
 }
 
-fn store_session(session: common::Session) {
-    // TODO: Decide properly if we're using local storage or cookies
-    #[cfg(target_arch = "wasm32")]
-    wasm_cookies::set(
-        "session_id",
-        session.id.as_ref(),
-        &wasm_cookies::CookieOptions::default(),
-    );
-    let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-    log!("{:?}", &session);
-    set_state(Some(session));
-}
+// fn store_session(session: common::Session) {
+//     // TODO: Decide properly if we're using local storage or cookies
+//     #[cfg(target_arch = "wasm32")]
+//     wasm_cookies::set(
+//         "session_id",
+//         session.id.as_ref(),
+//         &wasm_cookies::CookieOptions::default(),
+//     );
+//     // let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
+//     log!("{:?}", &session);
+//     // set_state(Some(session));
+// }
 
-pub fn clear_session() {
-    let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-    set_state(None);
-}
+// pub fn clear_session() {
+//     // let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
+//     // set_state(None);
+//     // TODO: Decide properly if we're using local storage or cookies
+//     #[cfg(target_arch = "wasm32")]
+//     wasm_cookies::delete("session_id");
+// }
 
 #[component]
 pub fn GoogleLogoSVG() -> impl IntoView {

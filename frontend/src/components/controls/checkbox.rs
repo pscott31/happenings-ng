@@ -4,7 +4,7 @@ use leptos::*;
 pub fn Checkbox(
     #[prop(into)] label: String,
     #[prop(into)] get: Signal<bool>,
-    #[prop(into)] set: Callback<bool>,
+    #[prop(into, default=Callback::new(|x:bool|{}))] set: Callback<bool>,
 ) -> impl IntoView {
     view! {
       <div class="control">

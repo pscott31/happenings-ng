@@ -1,6 +1,7 @@
 use leptos::*;
 use leptos_router::*;
 use leptos_use::storage::{use_local_storage, JsonCodec};
+use tracing::{info, warn};
 
 use super::navbar::NavBar;
 use super::not_found::NotFound;
@@ -22,18 +23,74 @@ pub struct SignInSignal(pub RwSignal<SignInStatus>);
 // #[derive(Copy, Clone)]
 pub type MaybePersonSignal = Signal<Option<Person>>;
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum SessionID {
+    NotSet,
+    Set(String),
+}
+
+impl SessionID {
+    pub fn store_cookie(&self) {
+        // TODO: Decide properly if we're using local storage or cookies
+        #[cfg(target_arch = "wasm32")]
+        match self {
+            Self::Set(id) => wasm_cookies::set(
+                "session_id",
+                id.as_ref(),
+                &wasm_cookies::CookieOptions {
+                    path: Some("/"),
+                    ..Default::default()
+                },
+            ),
+            Self::NotSet => wasm_cookies::delete("session_id"),
+        }
+    }
+
+    pub fn from_cookie() -> Self {
+        // TODO: Decide properly if we're using local storage or cookies
+
+        info!("Getting sid from cookie");
+        #[cfg(target_arch = "wasm32")]
+        match wasm_cookies::get("session_id") {
+            None => Self::NotSet,
+            Some(Err(_)) => Self::NotSet,
+            Some(Ok(id)) => Self::Set(id),
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        Self::NotSet
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     provide_context(SignInSignal(create_rw_signal(SignInStatus::NotVisible)));
 
-    let (get_session, _, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-    let user_info = create_resource(get_session, |_| get_logged_in_person());
-    let maybe_person = Signal::derive(move || user_info.get().and_then(|r| r.ok()));
+    let (session_id, set_session_id) = create_signal(SessionID::from_cookie());
+    create_effect(move |_| session_id().store_cookie());
+
+    provide_context(set_session_id);
+
+    // let (get_session, _, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
+    let user_info = create_resource(session_id, |sid| async move {
+        match sid {
+            SessionID::Set(_) => match get_logged_in_person().await {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    warn!("Error getting logged in person: {:?}", e);
+                    None
+                }
+            },
+            SessionID::NotSet => None,
+        }
+    });
+
+    let maybe_person = Signal::derive(move || user_info.get().flatten());
+    // let maybe_person = Signal::derive(move || user_info.get().and_then(|r| r.ok()));
     provide_context::<MaybePersonSignal>(maybe_person);
     view! {
       <Router>
         <Routes>
-          <Route path="/" view=|| with_navbar(Home())/>
+          <Route path="/" view=|| with_navbar(Events())/>
           <Route path="/users" view=|| with_navbar(Users())/>
           <Route path="/events" view=|| with_navbar(Events())/>
           <Route path="/events/:id/book" view=|| with_navbar(BookingPage())>
