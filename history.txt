@@ -1,0 +1,5 @@
+#V2
+select * from events;
+use ns happenings db happenings;
+select * from events;
+select * from event;

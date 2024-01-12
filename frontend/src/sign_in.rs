@@ -275,12 +275,21 @@ pub fn SignInWelcome() -> impl IntoView {
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
     let set_session = use_context::<WriteSignal<SessionID>>().unwrap();
 
-    let trigger_oauth_popup = create_action(move |()| {
-        oauth_popup(move || {
-            set_session(SessionID::from_cookie());
-            sign_in_signal.set(SignInStatus::NotVisible);
-        })
+    let oauth_link = create_action(move |()| async {
+        let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
+        resp.url.to_string()
     });
+
+    let on_success = move || {
+        set_session(SessionID::from_cookie());
+        sign_in_signal.set(SignInStatus::NotVisible);
+    };
+
+    create_effect(move |_| match oauth_link.value()() {
+        Some(url) => oauth_popup(url, on_success),
+        None => Ok(()),
+    });
+
     let (email, set_email) = create_signal("".to_string());
 
     let continue_pressed = create_action(move |email: &String| {
@@ -331,7 +340,7 @@ pub fn SignInWelcome() -> impl IntoView {
           <div class="is-size-7 px-2">OR</div>
           <hr class="level-item is-flex-shrink-2"/>
         </div>
-        <button class="button" type="button" on:click=move |_| trigger_oauth_popup.dispatch(())>
+        <button class="button" type="button" on:click=move |_| oauth_link.dispatch(())>
           <span class="icon is-medium">
             <GoogleLogoSVG/>
           </span>
@@ -360,14 +369,12 @@ pub fn OAuthReturn() -> impl IntoView {
     }
 }
 
-async fn oauth_popup<F>(on_success: F) -> Result<(), AppError>
+fn oauth_popup<F>(url: String, on_success: F) -> Result<(), AppError>
 where
     F: Fn() + 'static,
 {
-    let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await?;
-
     let popup = window()
-        .open_with_url_and_target_and_features(resp.url.as_str(), "popup", "popup")
+        .open_with_url_and_target_and_features(url.as_ref(), "popup", "popup")
         .map_err(|_| format!("failed to open popup window"))?
         .ok_or(format!("failed to open popup window"))?;
 

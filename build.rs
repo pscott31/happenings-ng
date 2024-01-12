@@ -6,7 +6,8 @@ use std::process::{Command, Stdio};
 
 fn main() -> anyhow::Result<()> {
     let out_dir = env::var("OUT_DIR").map(PathBuf::from)?;
-    let debug = env::var("PROFILE")? == "debug";
+    let profile = env::var("PROFILE")?;
+    let debug = profile == "debug";
 
     let cargo = env::var("CARGO")?;
 
@@ -34,6 +35,7 @@ fn main() -> anyhow::Result<()> {
         .arg("build")
         .arg("--manifest-path=frontend/Cargo.toml")
         .arg("--target=wasm32-unknown-unknown")
+        .arg(format!("--{}", profile))
         .arg("--target-dir")
         .arg(fe_dir.as_os_str())
         .stderr(Stdio::inherit())
@@ -44,7 +46,7 @@ fn main() -> anyhow::Result<()> {
 
     ensure!(output.status.success(), "`cargo` invocation failed");
 
-    let wasm_in = fe_dir.join("wasm32-unknown-unknown/debug/frontend.wasm");
+    let wasm_in = fe_dir.join(format!("wasm32-unknown-unknown/{}/frontend.wasm", profile));
     // let wasm_in = env::var("CARGO_CDYLIB_FILE_FRONTEND").map(PathBuf::from)?;
     let bindgen_out = out_dir.join("frontend_bg");
 
