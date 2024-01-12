@@ -374,7 +374,8 @@ where
     F: Fn() + 'static,
 {
     let popup = window()
-        .open_with_url_and_target_and_features(url.as_ref(), "popup", "popup")
+        .open_with_url_and_target(url.as_ref(), "popup")
+        // .open_with_url_and_target_and_features(url.as_ref(), "popup", "popup")
         .map_err(|_| format!("failed to open popup window"))?
         .ok_or(format!("failed to open popup window"))?;
 
