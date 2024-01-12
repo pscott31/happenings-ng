@@ -1,6 +1,5 @@
 use common::NewUser;
 use leptos::*;
-use leptos_use::storage::{use_local_storage, JsonCodec};
 use logging::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -413,13 +412,13 @@ async fn validate_oauth_return() -> Result<(), AppError> {
     Ok(())
 }
 
-pub async fn check_user(
-    session: Option<common::Session>,
-) -> Result<common::UserInfoReponse, AppError> {
-    session.ok_or("no session in local storage")?;
-    let person = call_api("api/user", ()).await?;
-    Ok(person)
-}
+// pub async fn check_user(
+//     session: Option<common::Session>,
+// ) -> Result<common::UserInfoReponse, AppError> {
+//     session.ok_or("no session in local storage")?;
+//     let person = call_api("api/user", ()).await?;
+//     Ok(person)
+// }
 
 // fn store_session(session: common::Session) {
 //     // TODO: Decide properly if we're using local storage or cookies

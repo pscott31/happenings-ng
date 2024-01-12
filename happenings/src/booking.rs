@@ -51,6 +51,11 @@ pub async fn get_booking(booking_id: String) -> Result<Booking, ServerFnError> {
     backend::get(booking_id).await
 }
 
+#[leptos::server(endpoint = "list_bookings")]
+pub async fn list_bookings(event_id: String) -> Result<Vec<Booking>, ServerFnError> {
+    backend::list(event_id).await
+}
+
 #[leptos::server(endpoint = "create_booking")]
 pub async fn create_booking(
     event: String,
@@ -129,6 +134,23 @@ mod backend {
             .ok_or(Fail::NotFound(booking_id.clone()))?;
 
         Ok(booking.into())
+    }
+
+    pub async fn list(event_id: String) -> Result<Vec<Booking>, ServerFnError> {
+        let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
+
+        let id_thing = thing(event_id.as_ref()).map_err(|_| Fail::InvalidID(event_id.clone()))?;
+
+        let bookings: Vec<DbBooking> = app_state
+            .db
+            .query("select * from booking where event_id=$event_id")
+            .bind(("event_id", id_thing))
+            .await
+            .map_err(|e| Fail::DBError(e))?
+            .take(0)
+            .map_err(|e| Fail::DBError(e))?;
+
+        Ok(bookings.into_iter().map(|booking| booking.into()).collect())
     }
 
     pub async fn create(

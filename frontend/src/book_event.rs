@@ -9,7 +9,7 @@ use happenings::person::{get_person, Person};
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
-use leptos_router::{use_params_map, NavigateOptions, Outlet, Route};
+use leptos_router::{use_params_map, Outlet};
 use log::*;
 use url::Url;
 
@@ -151,10 +151,73 @@ pub fn CheckPayment() -> impl IntoView {
 }
 
 #[component]
+pub fn EventPage() -> impl IntoView {
+    // let params = use_params_map();
+    // let event_id = params.with(|p| p.get("id").cloned().unwrap_or_default());
+
+    let params = use_params_map();
+    let (event, set_event) = create_signal::<Option<Event>>(None);
+
+    let _event_res = create_resource(
+        move || params.with(|p| p.get("id").cloned().unwrap_or_default()),
+        move |id| async move {
+            let er = get_event(id).await;
+            match er {
+                Ok(evt) => set_event(Some(evt)),
+                Err(e) => {
+                    warn!("problem getting event: {:?}", e);
+                    set_event(None)
+                }
+            }
+        },
+    );
+
+    provide_context(event);
+    view! {
+      <Suspense fallback=move || view! { <p>"Loading Event..."</p> }>
+        <Outlet/>
+      </Suspense>
+    }
+}
+
+#[component]
+pub fn ListBookings() -> impl IntoView {
+    let event = use_context::<ReadSignal<Option<Event>>>().unwrap();
+    let bookings = create_resource(event, |maybe_event| async move {
+        match maybe_event {
+            Some(event) => match booking::list_bookings(event.id.clone()).await {
+                Ok(bookings) => bookings,
+                Err(e) => {
+                    warn!("Error listing bookings: {}", e);
+                    Default::default()
+                }
+            },
+            None => Default::default(),
+        }
+    });
+
+    let event_name = move || {
+        event()
+            .map(|e| e.name)
+            .unwrap_or("<unknown event>".to_string())
+    };
+
+    view! {
+      <section class="section">
+        <div class="container">
+          <h1 class="title">Bookings for {event_name}</h1>
+          <Outlet/>
+        </div>
+      </section>
+    }
+}
+
+#[component]
 pub fn BookingPage() -> impl IntoView {
     // let params = use_params_map();
     // let event_id = params.with(|p| p.get("id").cloned().unwrap_or_default());
 
+    // TODO: use event from context
     let params = use_params_map();
     let event_res = create_resource(
         move || params.with(|p| p.get("id").cloned().unwrap_or_default()),
