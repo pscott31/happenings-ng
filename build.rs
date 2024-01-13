@@ -35,7 +35,8 @@ fn main() -> anyhow::Result<()> {
         .arg("build")
         .arg("--manifest-path=frontend/Cargo.toml")
         .arg("--target=wasm32-unknown-unknown")
-        .arg(format!("--{}", profile))
+        //todo!
+        // .arg(format!("--{}", profile))
         .arg("--target-dir")
         .arg(fe_dir.as_os_str())
         .stderr(Stdio::inherit())

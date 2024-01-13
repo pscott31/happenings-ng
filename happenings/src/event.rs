@@ -1,13 +1,12 @@
 use crate::ticket::{TicketType, TicketTypes};
 use chrono::{DateTime, Local, Utc};
-use derive_builder::Builder;
 use happenings_macro::{generate_db, generate_new};
 use leptos::ServerFnError;
 use serde::{Deserialize, Serialize};
 
 #[generate_new]
 #[generate_db]
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Builder)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct Event {
     pub id: String,
     pub name: String,
@@ -93,15 +92,26 @@ pub async fn get_event(id: String) -> Result<Event, leptos::ServerFnError> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use happenings_macro::serverfn_test;
+    use rust_decimal::Decimal;
     use std::collections::HashSet;
 
     fn test_event(num: usize) -> NewEvent {
-        NewEventBuilder::default()
-            .name(format!("test event {}", num))
-            .build()
-            .unwrap()
+        NewEvent {
+            name: format!("test event {}", num),
+            additional_ticket_types: vec![],
+            default_ticket_type: TicketType {
+                name: "foo".to_string(),
+                price: Decimal::ZERO,
+                square_item_id: "arse".to_string(),
+                square_catalog_version: 2,
+            },
+            tagline: "test event".to_string(),
+            start: DateTime::<Utc>::default(),
+            end: DateTime::<Utc>::default(),
+        }
     }
 
     #[serverfn_test]
