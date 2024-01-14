@@ -31,12 +31,14 @@ fn main() -> anyhow::Result<()> {
 
     let fe_dir = out_dir.join("frontend");
     println!("cargo:rerun-if-changed=frontend");
+
+    let release_args = if debug { vec![] } else { vec!["--release"] };
+
     let output = Command::new(cargo)
         .arg("build")
+        .args(release_args)
         .arg("--manifest-path=frontend/Cargo.toml")
         .arg("--target=wasm32-unknown-unknown")
-        //todo!
-        // .arg(format!("--{}", profile))
         .arg("--target-dir")
         .arg(fe_dir.as_os_str())
         .stderr(Stdio::inherit())
