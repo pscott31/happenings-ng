@@ -1,6 +1,8 @@
 target
 target_vscode
 target_frontend
+testdata.db/*
+history.txt
 .DS_Store
 .VSCodeCounter
 happenings.toml

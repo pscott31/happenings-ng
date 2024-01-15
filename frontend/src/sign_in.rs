@@ -45,16 +45,15 @@ pub fn SignInPassword(email: String) -> impl IntoView {
 
     let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
 
-    let submit =
-        create_action(move |ep: &common::EmailPassword| {
-            let ep = ep.clone();
-            async move {
-                let session: common::Session = call_api("api/auth/password/signin", &ep).await?;
-                set_session_id(SessionID::Set(session.id));
-                sign_in_signal.set(SignInStatus::NotVisible);
-                Ok::<(), String>(())
-            }
-        });
+    let submit = create_action(move |ep: &common::EmailPassword| {
+        let ep = ep.clone();
+        async move {
+            let session: common::Session = call_api("api/auth/password/signin", &ep).await?;
+            set_session_id(SessionID::Set(session.id));
+            sign_in_signal.set(SignInStatus::NotVisible);
+            Ok::<(), String>(())
+        }
+    });
 
     view! {
       <form on:submit=move |e| {
@@ -280,15 +279,13 @@ pub fn SignInWelcome() -> impl IntoView {
     //     let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
     //     resp.url.to_string()
     // });
-    let oauth_link =
-        create_resource(
-            || {},
-            move |()| async {
-                let resp: common::LoginResponse =
-                    call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
-                resp.url.to_string()
-            },
-        );
+    let oauth_link = create_resource(
+        || {},
+        move |()| async {
+            let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
+            resp.url.to_string()
+        },
+    );
 
     let on_success = move || {
         set_session(SessionID::from_cookie());
@@ -314,11 +311,6 @@ pub fn SignInWelcome() -> impl IntoView {
             }
         })
     };
-
-    // create_effect(move |_| match oauth_link.value()() {
-    //     Some(url) => oauth_popup(url, on_success),
-    //     None => Ok(()),
-    // });
 
     let (email, set_email) = create_signal("".to_string());
 
@@ -405,17 +397,16 @@ where
         .ok_or(format!("failed to open popup window"))?;
 
     // TODO: How do we remove this once we're done?
-    let _remove_listener =
-        leptos_use::use_event_listener(window(), ev::message, move |evt| {
-            if evt.origin() == window().origin() {
-                if let Some(msg_str) = evt.data().as_string() {
-                    if msg_str == "auth_ok" {
-                        popup.close().unwrap(); // todo
-                        on_success();
-                    }
+    let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
+        if evt.origin() == window().origin() {
+            if let Some(msg_str) = evt.data().as_string() {
+                if msg_str == "auth_ok" {
+                    popup.close().unwrap(); // todo
+                    on_success();
                 }
             }
-        });
+        }
+    });
 
     Ok(())
 }

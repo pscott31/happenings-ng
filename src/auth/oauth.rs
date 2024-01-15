@@ -93,6 +93,8 @@ pub async fn oauth_return(
     // let state = CsrfToken::new(params.remove("state").context("oauth missing state")?);
     // let code = AuthorizationCode::new(params.remove("code").context("oauth missing code")?);
 
+    use tracing::info;
+
     let state = CsrfToken::new(params.state);
     let code = AuthorizationCode::new(params.code);
 
@@ -129,11 +131,11 @@ pub async fn oauth_return(
 
     let mut result = app_state
         .db
-        .query("SELECT * FROM people where email=$email;")
+        .query("SELECT * FROM person where email=$email;")
         .bind(("email", &user_info.email))
         .await?;
 
-    let mut people: Vec<Person> = result.take(1)?;
+    let mut people: Vec<Person> = result.take(0)?;
 
     let person = match people.pop() {
         Some(person) => person,

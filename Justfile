@@ -27,8 +27,15 @@ build-backend:
 
 build: build-frontend build-backend
 
+run: build
+    ./target/{{profile}}/happenings
+
+db_client:
+    surreal sql --db happenings --ns happenings
+
+db:
+    surreal start --user root --pass root file:testdata.db
+
 cargo *args:
     cargo {{args}}
 
-run: build
-    ./target/{{profile}}/happenings
