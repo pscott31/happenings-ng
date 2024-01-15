@@ -1,9 +1,9 @@
 target
 target_vscode
+target_frontend
 .DS_Store
 .VSCodeCounter
 happenings.toml
 happenings.db
 scripts/testdata.db
 scripts/history.txt
-

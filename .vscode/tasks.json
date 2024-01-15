@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Just Build",
+            "type": "shell",
+            "command": "just build",
+            "group": "build",
+            "problemMatcher": [] // Add appropriate problem matchers if needed
+        },
+        {
+            "label": "Just Build (frontend only)",
+            "type": "shell",
+            "command": "just build-frontend",
+            "group": "build",
+            "problemMatcher": [] // Add appropriate problem matchers if needed
+        }
+    ]
+}

@@ -149,13 +149,27 @@ async fn root_handler() -> impl IntoResponse {
 }
 
 async fn wasm_handler() -> impl IntoResponse {
-    let bytes = include_bytes!(env!("HAPPENINGS_WASM"));
-    ([(header::CONTENT_TYPE, "application/wasm")], bytes)
+    // In debug mode, read the file at runtime
+    #[cfg(debug_assertions)]
+    let content = std::fs::read(env!("HAPPENINGS_WASM")).expect("Failed to read file");
+
+    // In release mode, embed the file at compile time
+    #[cfg(not(debug_assertions))]
+    let content = include_bytes!(env!("HAPPENINGS_WASM"));
+
+    ([(header::CONTENT_TYPE, "application/wasm")], content)
 }
 
 async fn js_handler() -> impl IntoResponse {
-    let bytes = include_bytes!(env!("HAPPENINGS_JS"));
-    ([(header::CONTENT_TYPE, "text/javascript")], bytes)
+    // In debug mode, read the file at runtime
+    #[cfg(debug_assertions)]
+    let content = std::fs::read(env!("HAPPENINGS_JS")).expect("Failed to read file");
+
+    // In release mode, embed the file at compile time
+    #[cfg(not(debug_assertions))]
+    let content = include_bytes!(env!("HAPPENINGS_JS"));
+
+    ([(header::CONTENT_TYPE, "text/javascript")], content)
 }
 
 #[derive(RustEmbed)]
