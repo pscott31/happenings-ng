@@ -4,7 +4,7 @@ use tracing::{info, warn};
 
 use super::navbar::NavBar;
 use super::not_found::NotFound;
-use crate::book_event::{Booking, BookingPage, BookingPayment, BookingRoot, CheckPayment, EventPage, ListBookings};
+use crate::book_event::{Booking, BookingPage, BookingRoot, CheckPayment, EventPage, GeneratePaymentLink, ListBookings};
 use crate::events::Events;
 use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
@@ -94,15 +94,14 @@ pub fn App() -> impl IntoView {
           <Route path="/events" view=|| with_navbar(Events())/>
           <Route path="/events/:id" view=|| with_navbar(EventPage())>
             <Route path="bookings" view=ListBookings/>
-            <Route path="book" view=BookingPage>
-              <Route path="" view=|| view! { <p>Default  stuff</p> }/>
-              <Route path=":booking_id/payment" view=BookingPayment/>
-            </Route>
+            <Route path="book" view=BookingPage/>
           </Route>
 
           <Route path="/booking" view=|| with_navbar(BookingRoot())>
             <Route path=":booking_id" view=Booking>
+              <Route path="generate_payment_link" view=GeneratePaymentLink/>
               <Route path="check_payment" view=CheckPayment/>
+              <Route path="" view=|| view! {}/>
             </Route>
           </Route>
 

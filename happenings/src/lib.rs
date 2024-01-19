@@ -1,6 +1,7 @@
 pub mod booking;
 pub mod config;
 pub mod event;
+pub mod generic_id;
 pub mod person;
 pub mod square_api;
 pub mod ticket;

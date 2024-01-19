@@ -1,22 +1,77 @@
-use crate::person::PersonID;
+use crate::event::{Event, EventId};
+use crate::generic_id::{GenericId, TableName};
+use crate::person::{Person, PersonId};
 use crate::ticket::Ticket;
-use happenings_macro::{generate_db, generate_new, generate_new_db};
 use leptos::*;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-#[generate_new]
-#[generate_db]
-#[generate_new_db]
+pub type BookingId = GenericId<Booking>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Booking {
-    pub id: String,
-    pub event_id: String,
-    pub contact_id: String,
+    pub id: BookingId,
     pub tickets: Vec<Ticket>,
     pub status: Status,
     pub payments: Vec<Payment>,
     pub square_order: Option<String>,
+    pub contact: Person,
+    pub event: Event,
+}
+
+impl TableName for Booking {
+    const TABLE_NAME: &'static str = "booking";
+}
+
+impl Booking {
+    pub fn total_paid(&self) -> Decimal {
+        self.payments
+            .iter()
+            .fold(Decimal::new(0, 2), |a, p| a + p.amount())
+    }
+
+    pub fn total_ticket_value(&self) -> Decimal {
+        self.tickets
+            .iter()
+            .fold(Decimal::new(0, 2), |a, t| a + t.ticket_type.price)
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct DbBooking {
+    pub id: surrealdb::sql::Thing,
+    pub tickets: Vec<Ticket>,
+    pub status: Status,
+    pub payments: Vec<Payment>,
+    pub square_order: Option<String>,
+    pub contact: crate::person::DbPerson,
+    pub event: crate::event::DbEvent,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl From<DbBooking> for Booking {
+    fn from(item: DbBooking) -> Self {
+        Self {
+            id: item.id.into(),
+            contact: item.contact.into(),
+            event: item.event.into(),
+            tickets: item.tickets,
+            status: item.status,
+            payments: item.payments,
+            square_order: item.square_order,
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct NewDbBooking {
+    pub tickets: Vec<Ticket>,
+    pub status: Status,
+    pub payments: Vec<Payment>,
+    pub square_order: Option<String>,
+    pub contact_id: surrealdb::sql::Thing,
+    pub event_id: surrealdb::sql::Thing,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
@@ -31,7 +86,7 @@ pub enum Status {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Payment {
-    Cash { amount: Decimal, to: PersonID },
+    Cash { amount: Decimal, to: String },
     Card { amount: Decimal, reference: String },
     BankTransfer { amount: Decimal, reference: String },
 }
@@ -47,19 +102,19 @@ impl Payment {
 }
 
 #[leptos::server(endpoint = "get_booking")]
-pub async fn get_booking(booking_id: String) -> Result<Booking, ServerFnError> {
+pub async fn get_booking(booking_id: BookingId) -> Result<Booking, ServerFnError> {
     backend::get(booking_id).await
 }
 
 #[leptos::server(endpoint = "list_bookings")]
-pub async fn list_bookings(event_id: String) -> Result<Vec<Booking>, ServerFnError> {
+pub async fn list_bookings(event_id: EventId) -> Result<Vec<Booking>, ServerFnError> {
     backend::list(event_id).await
 }
 
 #[leptos::server(endpoint = "create_booking")]
 pub async fn create_booking(
-    event: String,
-    contact: String,
+    event: EventId,
+    contact: PersonId,
     tickets: Vec<Ticket>,
 ) -> Result<Booking, ServerFnError> {
     backend::create(event, contact, tickets).await
@@ -67,37 +122,33 @@ pub async fn create_booking(
 
 #[leptos::server]
 pub async fn create_payment_link(
-    booking_id: String,
+    booking_id: BookingId,
     redirect_to: String,
 ) -> Result<String, ServerFnError> {
     backend::create_payment_link(booking_id, redirect_to).await
 }
 
 #[leptos::server(endpoint = "check_payment")]
-pub async fn check_payment(booking_id: String) -> Result<Booking, ServerFnError> {
+pub async fn check_payment(booking_id: BookingId) -> Result<Booking, ServerFnError> {
     backend::check_payment(booking_id).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use super::*;
-    use crate::event::DbEvent;
-    use crate::person::{DbPerson, Person};
-    use crate::square_api;
+    use crate::event::EventId;
     use crate::AppState;
-    // use axum::extract::Host;
+    use crate::{db, square_api};
     use leptos::logging::warn;
     use leptos::ServerFnError::{self, ServerError};
     use phonenumber;
     use sanitizer::StringSanitizer;
     use surrealdb::opt::PatchOp;
-    use surrealdb::sql::thing;
+    use surrealdb::sql::Thing;
     use tracing::info;
 
     enum Fail {
         NoState,
-        // NoHost,
-        InvalidID(String),
         DBError(surrealdb::Error),
         NotFound(String),
         SquareAPI(String),
@@ -108,8 +159,6 @@ mod backend {
         fn from(f: Fail) -> Self {
             let msg = match f {
                 Fail::NoState => "app state not found".to_string(),
-                // Fail::NoHost => "host not found".to_string(),
-                Fail::InvalidID(id) => format!("invalid id '{}'", id),
                 Fail::DBError(e) => format!("database error: {}", e.to_string()),
                 Fail::NotFound(id) => format!("no record with id '{}'", id),
                 Fail::SquareAPI(e) => format!("square api call failed: '{}'", e),
@@ -120,31 +169,34 @@ mod backend {
         }
     }
 
-    pub async fn get(booking_id: String) -> Result<Booking, ServerFnError> {
+    pub async fn get(booking_id: BookingId) -> Result<Booking, ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
-
-        let id_thing =
-            thing(booking_id.as_ref()).map_err(|_| Fail::InvalidID(booking_id.clone()))?;
-
-        let booking: DbBooking = app_state
+        let mut bookings: Vec<DbBooking> = app_state
             .db
-            .select(&id_thing)
+            .query(
+                "SELECT contact_id AS contact,
+                          event_id AS event,
+                          *
+                    FROM booking WHERE id=$id
+                    FETCH contact, event",
+            )
+            .bind(("id", Thing::from(&booking_id)))
             .await
             .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking_id.clone()))?;
+            .take(0)
+            .map_err(|e| Fail::DBError(e))?;
 
+        let booking = bookings.pop().ok_or(Fail::NotFound(booking_id.into()))?;
         Ok(booking.into())
     }
 
-    pub async fn list(event_id: String) -> Result<Vec<Booking>, ServerFnError> {
+    pub async fn list(event_id: EventId) -> Result<Vec<Booking>, ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
-
-        let id_thing = thing(event_id.as_ref()).map_err(|_| Fail::InvalidID(event_id.clone()))?;
 
         let bookings: Vec<DbBooking> = app_state
             .db
-            .query("select * from booking where event_id=$event_id")
-            .bind(("event_id", id_thing))
+            .query("select contact_id AS contact, event_id AS event, * from booking where event_id=$event_id and status != 'Draft' FETCH contact, event")
+            .bind(("event_id", Thing::from(&event_id)))
             .await
             .map_err(|e| Fail::DBError(e))?
             .take(0)
@@ -154,8 +206,8 @@ mod backend {
     }
 
     pub async fn create(
-        event: String,
-        contact: String,
+        event: EventId,
+        contact: PersonId,
         tickets: Vec<Ticket>,
     ) -> Result<Booking, ServerFnError> {
         info!("creating draft booking for {:?}/{:?}", event, contact);
@@ -164,17 +216,15 @@ mod backend {
             use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
 
         let b = NewDbBooking {
-            contact_id: thing(contact.as_ref())
-                .map_err(|_| ServerError("invalid contact id".to_string()))?,
-            event_id: thing(event.as_ref())
-                .map_err(|_| ServerError("invalid event id".to_string()))?,
+            contact_id: contact.into(),
+            event_id: event.into(),
             tickets: tickets,
             status: Status::Draft,
             payments: Vec::new(),
             square_order: None,
         };
 
-        let mut bs: Vec<DbBooking> = app_state
+        let mut bs: Vec<crate::db::Record> = app_state
             .db
             .create("booking")
             .content(b)
@@ -184,40 +234,18 @@ mod backend {
         let b = bs
             .pop()
             .ok_or(ServerError("failed to create new booking".to_string()))?;
-        return Ok(b.into());
+
+        get(b.id.into()).await
     }
 
     pub async fn create_payment_link(
-        booking_id: String,
+        booking_id: BookingId,
         redirect_to: String,
     ) -> Result<String, ServerFnError> {
         info!("creating payment link for booking: {:?}", booking_id);
         let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
-        // let host = use_context::<Host>().ok_or(Fail::NoHost)?;
-        let id_thing =
-            thing(booking_id.as_ref()).map_err(|_| Fail::InvalidID(booking_id.clone()))?;
-        let booking: DbBooking = app_state
-            .db
-            .select(&id_thing)
-            .await
-            .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking_id.clone()))?;
-
-        let event: DbEvent = app_state
-            .db
-            .select(&booking.event_id)
-            .await
-            .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking.event_id.to_string()))?;
-
-        let contact: DbPerson = app_state
-            .db
-            .select(&booking.contact_id)
-            .await
-            .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking.contact_id.to_string()))?;
-        let contact: Person = contact.into();
-
+        let booking = get(booking_id.clone()).await?;
+        let contact = booking.contact;
         let phone = match contact.phone.as_ref() {
             Some(phone_str) => {
                 match phonenumber::parse(Some(phonenumber::country::Id::GB), phone_str) {
@@ -250,7 +278,7 @@ mod backend {
 
         let req = square_api::CreatePaymentLinkRequest {
             idempotency_key: uuid::Uuid::new_v4().to_string(),
-            description: event.name,
+            description: booking.event.name,
             order: new_order,
             checkout_options: Some(square_api::CheckoutOptions {
                 allow_tipping: false,
@@ -281,35 +309,27 @@ mod backend {
 
         let parsed_res = res.json::<square_api::Welcome>().await?;
 
-        let _: DbBooking = app_state
+        let _: db::Record = app_state
             .db
-            .update(id_thing)
+            .update(booking.id)
             .patch(PatchOp::replace(
                 "/square_order",
                 parsed_res.payment_link.order_id,
             ))
             .await
             .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking_id))?;
+            .ok_or(Fail::NotFound(booking_id.into()))?;
 
         Ok(parsed_res.payment_link.long_url)
     }
 
-    pub async fn check_payment(booking_id: String) -> Result<Booking, ServerFnError> {
+    pub async fn check_payment(booking_id: BookingId) -> Result<Booking, ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoState)?;
 
-        let id_thing =
-            thing(booking_id.as_ref()).map_err(|_| Fail::InvalidID(booking_id.clone()))?;
-
-        let booking: DbBooking = app_state
-            .db
-            .select(&id_thing)
-            .await
-            .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking_id.clone()))?;
+        let booking = get(booking_id.clone()).await?;
 
         // Call Square API and check status of payment on the order
-        let order_id = booking.square_order.ok_or(Fail::NoSquareOrder)?;
+        let order_id = booking.square_order.clone().ok_or(Fail::NoSquareOrder)?;
         let req = build_get_request(format!("orders/{}", order_id).as_ref());
 
         let res = req.send().await.map_err(|e| {
@@ -335,9 +355,7 @@ mod backend {
             })
             .collect();
 
-        let total_paid = payments
-            .iter()
-            .fold(Decimal::new(0, 2), |a, p| a + p.amount());
+        let total_paid = booking.total_paid();
 
         let order_total = Decimal::new(parsed_res.order.total_money.amount, 2);
 
@@ -349,16 +367,16 @@ mod backend {
             booking.status
         };
 
-        let updated_booking: DbBooking = app_state
+        let _: db::Record = app_state
             .db
-            .update(id_thing)
+            .update(&booking.id)
             .patch(PatchOp::replace("/payments", payments))
             .patch(PatchOp::replace("/status", status))
             .await
             .map_err(|e| Fail::DBError(e))?
-            .ok_or(Fail::NotFound(booking_id))?;
+            .ok_or(Fail::NotFound(booking.id.into()))?;
 
-        Ok(updated_booking.into())
+        get(booking_id.clone()).await
     }
 
     // TODO - common code between this guy and below

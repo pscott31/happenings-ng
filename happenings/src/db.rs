@@ -24,7 +24,6 @@ pub struct NewPerson {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct Person {
     pub id: Thing,
     pub given_name: String,

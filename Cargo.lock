@@ -1411,6 +1411,7 @@ dependencies = [
  "leptos_router",
  "log",
  "reqwest",
+ "rust_decimal",
  "rust_decimal_macros",
  "serde",
  "serde_json",

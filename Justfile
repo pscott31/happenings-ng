@@ -23,7 +23,7 @@ build-frontend:
 build-backend:
     echo ${HAPPENINGS_JS}
     echo ${HAPPENINGS_WASM}
-    cargo build
+    cargo build {{cargo_flags}}
 
 build: build-frontend build-backend
 

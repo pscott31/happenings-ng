@@ -10,9 +10,31 @@ pub fn generate_new(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let struct_name = &input.ident;
     let new_struct_name = syn::Ident::new(&format!("New{}", struct_name), struct_name.span());
-    let to_method_name = format_ident!("to_{}", struct_name.to_string().to_lowercase());
+    // let to_method_name = format_ident!("to_{}", struct_name.to_string().to_lowercase());
 
     let attrs = input.attrs.clone();
+
+    // Remove our 'not_in_new' attribute
+    let fields_without_attr = match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields_named) => fields_named
+                .named
+                .iter()
+                .map(|f| {
+                    // Create a field without the #[not_in_new] attribute
+                    let mut field = f.clone();
+                    field.attrs = field
+                        .attrs
+                        .into_iter()
+                        .filter(|attr| !attr.path.is_ident("not_in_new"))
+                        .collect();
+                    field
+                })
+                .collect::<Vec<_>>(),
+            _ => unimplemented!(),
+        },
+        _ => unimplemented!(),
+    };
 
     let new_fields = match &input.data {
         Data::Struct(data_struct) => {
@@ -20,7 +42,7 @@ pub fn generate_new(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 Fields::Named(fields_named) => fields_named
                     .named
                     .iter()
-                    .filter(|f| f.ident.as_ref().unwrap() != "id") // Exclude 'id' field
+                    .filter(|f| f.ident.as_ref().unwrap() != "id" && !has_not_in_new_attr(f)) // Exclude 'id' field
                     .collect::<Vec<_>>(),
                 _ => unimplemented!(), // Add support for other types (unnamed fields, tuples) as needed
             }
@@ -28,14 +50,21 @@ pub fn generate_new(_attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => unimplemented!(), // Support only struct, not enums or unions
     };
 
-    let field_assignments: Vec<_> = new_fields
-        .iter()
-        .filter(|field| field.ident.as_ref().map_or(false, |name| name != "id"))
-        .map(|field| {
-            let field_name = &field.ident;
-            quote! { #field_name: self.#field_name }
-        })
-        .collect();
+    // let field_assignments: Vec<_> = new_fields
+    //     .iter()
+    //     // .filter(|field| field.ident.as_ref().map_or(false, |name| name != "id"))
+    //     .map(|field| {
+    //         let field_name = &field.ident;
+    //         quote! { #field_name: self.#field_name }
+    //     })
+    //     .collect();
+
+    let orig_struct = quote! {
+            #(#attrs)*
+            pub struct #struct_name {
+                #(#fields_without_attr),*
+            }
+    };
 
     let new_struct = quote! {
                 #(#attrs)*
@@ -44,24 +73,31 @@ pub fn generate_new(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 }
     };
 
-    let impl_new_struct = quote! {
-        impl  #new_struct_name  {
-            pub fn #to_method_name(self, id: String) -> #struct_name {
-                #struct_name {
-                     id,
-                     #(#field_assignments),*
-                    }
-                }
-            }
-    };
+    // let impl_new_struct = quote! {
+    //     impl  #new_struct_name  {
+    //         pub fn #to_method_name(self, id: String) -> #struct_name {
+    //             #struct_name {
+    //                  id,
+    //                  #(#field_assignments),*
+    //                 }
+    //             }
+    //         }
+    // };
 
     let gen = quote! {
-        #input
+        #orig_struct
         #new_struct
-        #impl_new_struct
+        // #impl_new_struct
     };
 
     gen.into()
+}
+
+fn has_not_in_new_attr(field: &syn::Field) -> bool {
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path.is_ident("not_in_new"))
 }
 
 #[proc_macro_attribute]
@@ -138,6 +174,36 @@ pub fn generate_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
     gen.into()
 }
 
+fn struct_fields_without_attr(input: &syn::DeriveInput) -> Vec<syn::Field> {
+    match &input.data {
+        Data::Struct(data_struct) => match &data_struct.fields {
+            Fields::Named(fields_named) => fields_named
+                .named
+                .iter()
+                .map(|f| {
+                    // Create a field without the #[not_in_new] attribute
+                    let mut field = f.clone();
+                    field.attrs = field
+                        .attrs
+                        .into_iter()
+                        .filter(|attr| !attr.path.is_ident("not_in_new"))
+                        .collect();
+                    field
+                })
+                .collect::<Vec<_>>(),
+            _ => unimplemented!(),
+        },
+        _ => unimplemented!(),
+    }
+}
+
+fn field_has_attr(field: &syn::Field) -> bool {
+    field
+        .attrs
+        .iter()
+        .any(|attr| attr.path.is_ident("not_in_new"))
+}
+
 #[proc_macro_attribute]
 pub fn generate_new_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
@@ -146,6 +212,15 @@ pub fn generate_new_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let db_struct_name = syn::Ident::new(&format!("NewDb{}", struct_name), struct_name.span());
 
     let attrs = input.attrs.clone();
+
+    // Remove our 'not_in_new' attribute
+    let fields_without_attr = struct_fields_without_attr(&input);
+    let orig_struct = quote! {
+            #(#attrs)*
+            pub struct #struct_name {
+                #(#fields_without_attr),*
+            }
+    };
 
     let ident_is_thing = |i: &syn::Ident| i.to_string().ends_with("_id") || i == "id";
 
@@ -156,6 +231,7 @@ pub fn generate_new_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 .named
                 .iter()
                 .filter(|f| f.ident.as_ref().unwrap() != "id") // Exclude 'id' field
+                .filter(|f| !field_has_attr(f)) // Exclude fields with #[not_in_new] attribute
                 .map(|f| {
                     if ident_is_thing(f.ident.as_ref().unwrap()) {
                         syn::Field {
@@ -180,7 +256,7 @@ pub fn generate_new_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let gen = quote! {
-        #input
+        #orig_struct
 
         #[cfg(not(target_arch = "wasm32"))]
         #db_struct

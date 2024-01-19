@@ -50,11 +50,11 @@ where
 }
 
 impl EventRow {
-    pub fn id(&self) -> String { self.inner.id.clone() }
+    pub fn id(&self) -> String { self.inner.id.clone().into() }
     pub fn name(&self) -> String { self.inner.name.clone() }
     pub fn date(&self) -> String { self.inner.start_local().format("%d %B %Y").to_string() }
     pub fn time(&self) -> String { self.inner.start_local().format("%-I:%M %p").to_string() }
-    pub fn action(&self) -> String { self.inner.id.clone() }
+    pub fn action(&self) -> String { self.inner.id.clone().into() }
 }
 
 impl From<Event> for EventRow {

@@ -1,21 +1,57 @@
+use std::collections::HashMap;
+
 use crate::app::{MaybePersonSignal, SignInSignal, SignInStatus};
 use crate::components::controls::*;
+use crate::components::modal::Modal;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
-use happenings::booking::{self, get_booking, CreateBooking, CreatePaymentLink, Status};
-use happenings::event::{get_event, Event};
+use happenings::booking::{self, get_booking, BookingId, CreateBooking, Status};
+use happenings::event::{get_event, Event, EventId};
 use happenings::person::{get_person, Person};
 use happenings::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
 use leptos_router::{use_params_map, Outlet};
 use log::*;
+use rust_decimal::Decimal;
 use url::Url;
+
+#[component]
+pub fn Loader() -> impl IntoView {
+    view! { <span class="loader"></span> }
+}
 
 fn notify(msg: &str, color: Color) -> View {
     view! { <div class=format!("notification has-text-centered {}", color)>{msg.to_owned()}</div> }
         .into_view()
+}
+
+fn notify_details(msg: &str, details: String, color: Color) -> View {
+    let modal_visible = create_rw_signal(false);
+    let details = store_value(details);
+
+    view! {
+      <div class=format!("notification has-text-centered {}", color)>
+        <div class="block">{msg.to_owned()}</div>
+        <div class="block">
+          <a on:click=move |_| modal_visible.set(true)>Show Error Details</a>
+        </div>
+      </div>
+      <Modal
+        active=modal_visible
+        close_requested=move || modal_visible.set(false)
+        title="Error Details"
+        footer=|| view! {}
+      >
+        <div class="content">
+          <div class="block">
+            <pre style="white-space: pre-wrap;">{details}</pre>
+          </div>
+        </div>
+      </Modal>
+    }
+    .into_view()
 }
 
 #[component]
@@ -26,18 +62,18 @@ pub fn BookingRoot() -> impl IntoView {
 #[component]
 pub fn Booking() -> impl IntoView {
     let params = use_params_map();
-    let booking_id = move || {
+    let booking_id = move || -> BookingId {
         params()
             .get("booking_id")
             .cloned()
             .unwrap_or_default()
-            .to_string()
+            .into()
     };
 
     let booking = create_resource(booking_id, |id| async move { get_booking(id).await });
 
     let booking_summary = move || match booking.get() {
-        None => view! { <p>Loading..</p> }.into_view(),
+        None => view! { <p>Loading.. <Loader/></p> }.into_view(),
         Some(Err(e)) => {
             warn!("error loading booking: {:?}", e);
             notify("Error loading booking", Color::Danger)
@@ -46,22 +82,20 @@ pub fn Booking() -> impl IntoView {
     };
 
     view! {
-      {booking_summary}
-      <Outlet/>
+      <div class="section">
+        <Outlet/>
+        {booking_summary}
+      </div>
     }
 }
 
 #[component]
 pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl IntoView {
-    let event = create_resource(booking, |b| async move { get_event(b.event_id).await });
-    let contact = create_resource(booking, |b| async move { get_person(b.contact_id).await });
+    // TODO: these are now eagerly fetched, don't need to fetch again
+    let event = create_resource(booking, |b| async move { get_event(b.event.id).await });
+    let contact = create_resource(booking, |b| async move { get_person(b.contact.id).await });
 
     let event_name = move || event.get().map(|er| er.map(|e| e.name).unwrap_or_default());
-    let event_tagline = move || {
-        event
-            .get()
-            .map(|er| er.map(|e| e.tagline).unwrap_or_default())
-    };
 
     let full_name = Signal::derive(move || {
         contact
@@ -70,7 +104,7 @@ pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl I
             .unwrap_or_default()
     });
 
-    let tickets_view = move || {
+    let ticket_table_data = move || {
         booking
             .get()
             .tickets
@@ -84,44 +118,45 @@ pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl I
                 };
 
                 view! {
-                  <Field label=move || format!("Ticket {}", { i + 1 })>
-                    <div class="control">
-                      <input class="input" disabled=true prop:value=t.ticket_type.name.clone()/>
-                      <Checkbox label="Vegetarian" get=store_value(t.vegetarian)/>
-                      <Checkbox label="Gluten Free" get=store_value(t.gluten_free)/>
-                      <Text placeholder="Other dietary requirements" get=special/>
-                    </div>
-                  </Field>
+                  <tr>
+                    <td>{format!("Ticket {}", { i + 1 })}</td>
+                    <td>{t.ticket_type.name.clone()}</td>
+                    <td>{if t.vegetarian { "yes" } else { "no" }}</td>
+                    <td>{if t.gluten_free { "yes" } else { "no" }}</td>
+                    <td>{special}</td>
+                  </tr>
                 }
             })
             .collect_view()
     };
 
     view! {
-      <section class="section">
-        <div class="container">
-          <Suspense fallback=move || view! { <p>"Loading..."</p> }>
-            <h1 class="title">{event_name}</h1>
-            <p class="subtitle">{event_tagline}</p>
-            <Field label=|| "Booking Contact">
-              <Name get=full_name disabled=true/>
-            </Field>
-            {tickets_view}
-          </Suspense>
-        </div>
-      </section>
+      <div class="container">
+        <Suspense fallback=move || view! { <p>"Loading..."</p> }>
+          <h1 class="title">{event_name}</h1>
+          <h3 class="title is-5">Booking for {full_name}</h3>
+          <table class="table">
+            <tr>
+              <th></th>
+              <th>Type</th>
+              <th>Vegetarian</th>
+              <th>Gluten Free</th>
+              <th>Notes</th>
+            </tr>
+
+            {ticket_table_data}
+          </table>
+
+        </Suspense>
+      </div>
     }
 }
 
 #[component]
 pub fn CheckPayment() -> impl IntoView {
     let params = use_params_map();
-    let booking_id = move || {
-        params()
-            .get("booking_id")
-            .cloned()
-            .unwrap_or_default()
-            .to_string()
+    let booking_id = move || -> BookingId {
+        params.with(|p| p.get("booking_id").cloned().unwrap_or_default().into())
     };
 
     let status = create_resource(
@@ -152,14 +187,11 @@ pub fn CheckPayment() -> impl IntoView {
 
 #[component]
 pub fn EventPage() -> impl IntoView {
-    // let params = use_params_map();
-    // let event_id = params.with(|p| p.get("id").cloned().unwrap_or_default());
-
     let params = use_params_map();
     let (event, set_event) = create_signal::<Option<Event>>(None);
 
     let _event_res = create_resource(
-        move || params.with(|p| p.get("id").cloned().unwrap_or_default()),
+        move || params.with(|p| -> EventId { p.get("id").cloned().unwrap_or_default().into() }),
         move |id| async move {
             let er = get_event(id).await;
             match er {
@@ -183,7 +215,7 @@ pub fn EventPage() -> impl IntoView {
 #[component]
 pub fn ListBookings() -> impl IntoView {
     let event = use_context::<ReadSignal<Option<Event>>>().unwrap();
-    let bookings = create_resource(event, |maybe_event| async move {
+    let bookings_res = create_resource(event, |maybe_event| async move {
         match maybe_event {
             Some(event) => match booking::list_bookings(event.id.clone()).await {
                 Ok(bookings) => bookings,
@@ -195,6 +227,30 @@ pub fn ListBookings() -> impl IntoView {
             None => Default::default(),
         }
     });
+    let bookings = move || bookings_res.get().unwrap_or_default();
+    let ticket_types = move || event().map(|e| e.ticket_types()).unwrap_or_default();
+
+    let total_tickets = move || {
+        let mut totals: HashMap<String, usize> = HashMap::new();
+        for booking in bookings() {
+            for ticket in booking.tickets {
+                *totals.entry(ticket.ticket_type.name).or_insert(0) += 1;
+            }
+        }
+        totals
+    };
+
+    let total_ticket_value = move || {
+        bookings()
+            .iter()
+            .fold(Decimal::ZERO, |a, b| a + b.total_ticket_value())
+    };
+
+    let total_paid = move || {
+        bookings()
+            .iter()
+            .fold(Decimal::ZERO, |a, b| a + b.total_paid())
+    };
 
     let event_name = move || {
         event()
@@ -206,6 +262,44 @@ pub fn ListBookings() -> impl IntoView {
       <section class="section">
         <div class="container">
           <h1 class="title">Bookings for {event_name}</h1>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <For each=move || ticket_types() key=move |tt| tt.name.clone() let:tt>
+                  <th>{tt.name} Tickets</th>
+                </For>
+                <th>Order Value</th>
+                <th>Payment Recieved</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each=bookings key=move |b| b.id.clone() let:booking>
+                <tr>
+                  <td>
+                    <a href=format!("/booking/{}", booking.id.clone())>{booking.contact.full_name()}</a>
+                  </td>
+                  {ticket_types()
+                      .iter()
+                      .map(|tt| { booking.tickets.iter().filter(|t| t.ticket_type == *tt).count() })
+                      .map(|n| view! { <td class="has-text-right">{n}</td> })
+                      .collect_view()}
+                  <td class="has-text-right">{format!("£{}", booking.total_ticket_value())}</td>
+                  <td class="has-text-right">{format!("£{}", booking.total_paid())}</td>
+                </tr>
+              </For>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Totals:</td>
+                <For each=move || ticket_types() key=move |tt| tt.name.clone() let:tt>
+                  <td class="has-text-right">{move || total_tickets().get(tt.name.as_str()).cloned().unwrap_or(0)}</td>
+                </For>
+                <td class="has-text-right">{move || format!("£{}", total_ticket_value())}</td>
+                <td class="has-text-right">{move || format!("£{}", total_paid())}</td>
+              </tr>
+            </tfoot>
+          </table>
           <Outlet/>
         </div>
       </section>
@@ -214,13 +308,9 @@ pub fn ListBookings() -> impl IntoView {
 
 #[component]
 pub fn BookingPage() -> impl IntoView {
-    // let params = use_params_map();
-    // let event_id = params.with(|p| p.get("id").cloned().unwrap_or_default());
-
-    // TODO: use event from context
     let params = use_params_map();
     let event_res = create_resource(
-        move || params.with(|p| p.get("id").cloned().unwrap_or_default()),
+        move || params.with(|p| -> EventId { p.get("id").cloned().unwrap_or_default().into() }),
         move |id| get_event(id),
     );
 
@@ -274,26 +364,42 @@ fn url_for_path(path: String) -> String {
 }
 
 #[component]
-pub fn BookingPayment() -> impl IntoView {
+pub fn GeneratePaymentLink() -> impl IntoView {
     let params = use_params_map();
-    let booking_id = params.with(|p| p.get("booking_id").cloned().unwrap_or_default());
+    let booking_id = move || -> BookingId {
+        params.with(|p| p.get("booking_id").cloned().unwrap_or_default().into())
+    };
 
-    let create_payment_link = create_server_action::<CreatePaymentLink>();
-
-    create_payment_link.dispatch(CreatePaymentLink {
-        booking_id: booking_id.clone(),
-        redirect_to: url_for_path(format!("booking/{}/check_payment", &booking_id)),
+    let status = create_resource(booking_id, |id| async move {
+        booking::create_payment_link(
+            id.clone(),
+            url_for_path(format!("booking/{}/check_payment", &id)),
+        )
+        .await
     });
 
     create_effect(move |_| {
-        create_payment_link.value().with(|x| {
-            if let Some(Ok(res)) = x {
-                web_sys::window().unwrap().location().replace(res).unwrap();
-            }
-        })
+        if let Some(Ok(res)) = status.get() {
+            web_sys::window()
+                .unwrap()
+                .location()
+                .replace(res.as_ref())
+                .unwrap();
+        }
     });
 
-    view! { <p>Paying for {booking_id}</p> }
+    move || match status.get() {
+        None => view! { <div class="block">Generating Payment Link.. <Loader/></div> }.into_view(),
+        Some(Err(e)) => {
+            warn!("error generating payment link: {:?}", e);
+            notify_details(
+                "Error generating payment link",
+                e.to_string(),
+                Color::Danger,
+            )
+        }
+        Some(Ok(_)) => notify("Link generated, redirecting..", Color::Success),
+    }
 }
 
 #[component]
@@ -306,43 +412,14 @@ pub fn NewBookingForPerson(
     let event_tagline = move || event.with(|e| e.tagline.clone());
 
     let tickets = vec![Ticket::new(event().default_ticket_type.clone())];
-    let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(tickets.into());
+    let tickets = create_rw_signal::<ReactiveList<Ticket>>(tickets.into());
 
     let add_ticket = move || {
-        set_tickets.tracked_push(Ticket::new(event().default_ticket_type.clone()));
-    };
-
-    let badgers = move || {
-        tickets.with(|gl| {
-            debug!("recomuting badger");
-            gl.iter()
-                .enumerate()
-                .map(|(i, (&uid, &gv))| {
-                    if i == 0 {
-                        view! {
-                          <Field label=move || format!("Ticket {}", { i + 1 })>
-                            <TicketControl ticket=gv/>
-                          </Field>
-                        }
-                    } else {
-                        view! {
-                          <Field label=move || {
-                              view! {
-                                {format!("Ticket {}", { i + 1 })}
-                                <br/>
-                                <IconButton on_click=move || set_tickets.tracked_remove(uid) icon=FaTrashSolid/>
-                              }
-                          }>
-                            <TicketControl ticket=gv/>
-                          </Field>
-                        }
-                    }
-                })
-                .collect_view()
-        })
+        tickets.tracked_push(Ticket::new(event().default_ticket_type.clone()));
     };
 
     let create_booking = create_server_action::<CreateBooking>();
+    let pending = create_booking.pending();
 
     let navigate = leptos_router::use_navigate();
 
@@ -359,7 +436,7 @@ pub fn NewBookingForPerson(
         create_booking.value().with(|x| {
             if let Some(Ok(res)) = x {
                 navigate(
-                    format!("/events/{}/book/{}/payment", res.event_id, res.id).as_ref(),
+                    format!("/booking/{}/generate_payment_link", res.id).as_ref(),
                     Default::default(),
                 )
             }
@@ -378,8 +455,7 @@ pub fn NewBookingForPerson(
             <Field label=|| "Booking Contact">
               <Name get=full_name disabled=true/>
             </Field>
-            {badgers}
-
+            <TicketForm tickets=tickets/>
             <div class="field is-grouped is-flex-wrap-wrap">
               <p class="control">
                 <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
@@ -387,15 +463,55 @@ pub fn NewBookingForPerson(
                 </IconButton>
               </p>
               <p class="control">
-                <IconButton icon=FaBasketShoppingSolid color=Color::Primary on_click=on_submit>
+                <IconButton
+                  icon=FaBasketShoppingSolid
+                  color=Color::Primary
+                  on_click=on_submit
+                  disabled=pending
+                  loading=pending
+                >
                   Pay Now
                 </IconButton>
               </p>
-              <Outlet/>
             </div>
+
+            <Outlet/>
+
           </div>
         </div>
       </section>
+    }
+}
+
+#[component]
+pub fn TicketForm(tickets: RwSignal<ReactiveList<Ticket>>) -> impl IntoView {
+    move || {
+        tickets.with(|gl| {
+            gl.iter()
+                .enumerate()
+                .map(|(i, (&uid, &gv))| {
+                    if i == 0 {
+                        view! {
+                          <Field label=move || format!("Ticket {}", { i + 1 })>
+                            <TicketControl ticket=gv/>
+                          </Field>
+                        }
+                    } else {
+                        view! {
+                          <Field label=move || {
+                              view! {
+                                {format!("Ticket {}", { i + 1 })}
+                                <br/>
+                                <IconButton on_click=move || tickets.tracked_remove(uid) icon=FaTrashSolid/>
+                              }
+                          }>
+                            <TicketControl ticket=gv/>
+                          </Field>
+                        }
+                    }
+                })
+                .collect_view()
+        })
     }
 }
 

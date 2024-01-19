@@ -71,6 +71,7 @@ pub fn IconButton<F>(
     #[prop(into, optional)] class: OptionalMaybeSignal<String>,
     #[prop(optional)] children: Option<Children>,
     #[prop(into, optional)] disabled: OptionalMaybeSignal<bool>,
+    #[prop(into, default = MaybeSignal::Static(false))] loading: MaybeSignal<bool>,
 ) -> impl IntoView
 where
     F: Fn() + 'static,
@@ -87,6 +88,7 @@ where
       <button
         disabled=move || disabled.or_default().get()
         class=format!("button {} {}", color, class.or_default().get())
+        class:is-loading=loading
         on:click=move |_| on_click()
       >
         {icon_view}

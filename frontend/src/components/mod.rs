@@ -1,4 +1,4 @@
 pub mod controls;
-mod modal;
+pub mod modal;
 // pub use modal::*;
 

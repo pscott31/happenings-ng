@@ -118,7 +118,7 @@ pub async fn handle_server_fns(
         provide_context(app_state.clone());
         provide_context(host);
         if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-            if let Ok(person) = happenings::person::get_person(session.user.to_string()).await {
+            if let Ok(person) = happenings::person::get_person(session.user.into()).await {
                 provide_context(person);
             }
         }
