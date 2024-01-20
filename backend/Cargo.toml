@@ -1,0 +1,58 @@
+
+[[bin]]
+  name = "happenings"
+  path = "src/main.rs"
+
+[package]
+  edition = "2021"
+  name = "backend"
+  version = "0.1.0"
+
+[dependencies]
+  # One day it would be nice to use something like
+  # frontend = { artifact = "cdylib", target = "wasm32-unknown-unknown", path = "../frontend", lib = true }
+  # as a dependency, but it crashes cargo at the moment: https://github.com/rust-lang/cargo/issues/12358
+  # 
+  # Instead we rely on using a Justfile to build the frontend package for wasm32-unknown-unknown first
+  common = { workspace = true }
+
+  anyhow = { workspace = true }
+  axum = { workspace = true }
+  axum-extra = { workspace = true, features = ["cookie"] }
+
+  chrono = { workspace = true, features = ["serde"] }
+  derive_builder = { workspace = true }
+  dotenv = { workspace = true }
+  figment = { workspace = true, features = ["env", "toml"] }
+  hyper = { workspace = true }
+  hyper-util = { workspace = true, features = [
+    "http1",
+    "server-auto",
+    "tokio",
+  ] }
+  leptos = { workspace = true }
+  leptos_axum_hack = { workspace = true }
+  mime_guess = { workspace = true }
+  oauth2 = { workspace = true }
+  once_cell = { workspace = true }
+  parking_lot = { workspace = true }
+  rand = { workspace = true }
+  reqwest = { workspace = true, default-features = false, features = [
+    "cookies",
+    "json",
+    "rustls-tls",
+    "trust-dns",
+  ] }
+  rust-embed = { workspace = true }
+  scopeguard = { workspace = true }
+  serde = { workspace = true, features = ["derive"] }
+  sha256 = { workspace = true }
+  surrealdb = { workspace = true } #features = ["kv-mem", "kv-rocksdb"]
+  tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+  tokio-util = { workspace = true }
+  tower = { workspace = true }
+  tracing = { workspace = true }
+  tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[dev-dependencies]
+  axum-test = { workspace = true }

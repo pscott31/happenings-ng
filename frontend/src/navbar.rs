@@ -6,13 +6,7 @@ use leptos_router::A;
 #[component]
 pub fn NavBar() -> impl IntoView {
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
-
     let set_session = use_context::<WriteSignal<SessionID>>().unwrap();
-
-    // let (get_session, _, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-
-    // let user_info = create_resource(get_session, check_user);
-
     let user_info = use_context::<MaybePersonSignal>().unwrap();
     let menu_open = create_rw_signal(false);
 
@@ -67,17 +61,6 @@ pub fn NavBar() -> impl IntoView {
               Events
             </A>
 
-          // <div class="navbar-item has-dropdown is-hoverable">
-          // <a class="navbar-link">More</a>
-
-          // <div class="navbar-dropdown">
-          // <a class="navbar-item">About</a>
-          // <a class="navbar-item">Jobs</a>
-          // <a class="navbar-item">Contact</a>
-          // <hr class="navbar-divider"/>
-          // <a class="navbar-item">Report an issue</a>
-          // </div>
-          // </div>
           </div>
 
           <div class="navbar-end">

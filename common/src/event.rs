@@ -1,7 +1,7 @@
 use crate::{generic_id::{GenericId, TableName}, ticket::{TicketType, TicketTypes}};
 use chrono::{DateTime, Local, Utc};
-use happenings_macro::generate_new;
 use leptos::ServerFnError;
+use macros::generate_new;
 use serde::{Deserialize, Serialize};
 
 pub type EventId = GenericId<Event>;
@@ -113,60 +113,51 @@ pub async fn get_event(id: EventId) -> Result<Event, leptos::ServerFnError> {
 
 ////////////////////////// Testy McTest Face //////////////////////////////////////
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    use super::*;
-    use happenings_macro::serverfn_test;
-    use rust_decimal::Decimal;
-    use std::collections::HashSet;
+//     use super::*;
+//     use macros::serverfn_test;
+//     use rust_decimal::Decimal;
+//     use std::collections::HashSet;
 
-    fn test_event(num: usize) -> NewEvent {
-        NewEvent {
-            name: format!("test event {}", num),
-            additional_ticket_types: vec![],
-            default_ticket_type: TicketType {
-                name: "foo".to_string(),
-                price: Decimal::ZERO,
-                square_item_id: "arse".to_string(),
-                square_catalog_version: 2,
-            },
-            tagline: "test event".to_string(),
-            start: DateTime::<Utc>::default(),
-            end: DateTime::<Utc>::default(),
-        }
-    }
+//     fn test_event(num: usize) -> NewEvent {
+//         NewEvent {
+//             name: format!("test event {}", num),
+//             additional_ticket_types: vec![],
+//             default_ticket_type: TicketType {
+//                 name: "foo".to_string(),
+//                 price: Decimal::ZERO,
+//                 square_item_id: "arse".to_string(),
+//                 square_catalog_version: 2,
+//             },
+//             tagline: "test event".to_string(),
+//             start: DateTime::<Utc>::default(),
+//             end: DateTime::<Utc>::default(),
+//         }
+//     }
 
-    struct NewWotsit {
-        pub stuff: String,
-    }
+//     #[serverfn_test]
+//     async fn it_works() -> anyhow::Result<()> {
+//         let ne1 = test_event(1);
+//         let ne2 = test_event(2);
 
-    struct Wotsit {
-        pub id: String,
-        pub stuff: String,
-    }
+//         let id1 = new_event(ne1.clone()).await.unwrap();
+//         let id2 = new_event(ne2.clone()).await.unwrap();
 
-    // #[serverfn_test]
-    // async fn it_works() -> anyhow::Result<()> {
-    //     let ne1 = test_event(1);
-    //     let ne2 = test_event(2);
+//         let e1 = ne1.to_event(id1.clone());
+//         let e2 = ne2.to_event(id2.clone());
+//         let events = list_events().await.unwrap();
+//         assert_eq!(events.len(), 2);
 
-    //     let id1 = new_event(ne1.clone()).await.unwrap();
-    //     let id2 = new_event(ne2.clone()).await.unwrap();
+//         let expected = HashSet::from([e1.clone(), e2.clone()]);
+//         let actual: HashSet<Event> = events.into_iter().collect();
+//         assert_eq!(expected.len(), 2);
+//         assert_eq!(expected, actual);
 
-    //     let e1 = ne1.to_event(id1.clone());
-    //     let e2 = ne2.to_event(id2.clone());
-    //     let events = list_events().await.unwrap();
-    //     assert_eq!(events.len(), 2);
-
-    //     let expected = HashSet::from([e1.clone(), e2.clone()]);
-    //     let actual: HashSet<Event> = events.into_iter().collect();
-    //     assert_eq!(expected.len(), 2);
-    //     assert_eq!(expected, actual);
-
-    //     let actual = get_event(id1.clone()).await.unwrap();
-    //     assert_eq!(e1, actual);
-    //     Ok(())
-    // }
-}
+//         let actual = get_event(id1.clone()).await.unwrap();
+//         assert_eq!(e1, actual);
+//         Ok(())
+//     }
+// }
 

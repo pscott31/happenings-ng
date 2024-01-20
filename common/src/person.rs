@@ -41,6 +41,16 @@ impl From<DbPerson> for Person {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct NewDbPerson {
+    pub given_name: String,
+    pub family_name: String,
+    pub picture: Option<String>,
+    pub email: String,
+    pub phone: Option<String>,
+}
+
 impl TableName for Person {
     const TABLE_NAME: &'static str = "person";
 }
@@ -58,10 +68,16 @@ pub async fn get_logged_in_person() -> Result<Person, leptos::ServerFnError> {
     backend::get_logged_in().await
 }
 
+#[leptos::server(PersonExists, "/api", "Url", "person_exists")]
+
+pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
+    backend::person_exists(email).await
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use super::*;
-    use crate::AppState;
+    use crate::{axum::LoggedInUser, db, AppState};
     use leptos::{use_context, ServerFnError::ServerError};
 
     pub async fn get(id: PersonId) -> Result<Person, leptos::ServerFnError> {
@@ -75,13 +91,29 @@ mod backend {
             .map_err(|_| ServerError("db query failed".to_string()))?
             .ok_or(ServerError(format!("no person {} found", id).to_string()))?;
 
-        return Ok(person.into());
+        Ok(person.into())
     }
 
     pub async fn get_logged_in() -> Result<Person, leptos::ServerFnError> {
-        let logged_in_person =
-            use_context::<Person>().ok_or(ServerError("No logged in person".to_string()))?;
-        Ok(logged_in_person)
+        let u = use_context::<Option<LoggedInUser>>();
+        match u {
+            None => Err(ServerError("no current user in context".to_string())),
+            Some(None) => Err(ServerError("no current user in context".to_string())),
+            Some(Some(LoggedInUser(person))) => Ok(person),
+        }
+    }
+
+    pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
+        let app_state =
+            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+
+        let people: Vec<db::Record> = app_state
+            .db
+            .query("SELECT * FROM person where email=$email;")
+            .bind(("email", &email))
+            .await?
+            .take(0)?;
+        Ok(!people.is_empty())
     }
 }
 

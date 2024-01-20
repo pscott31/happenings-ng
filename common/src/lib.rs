@@ -1,82 +1,26 @@
-use serde::{Deserialize, Serialize};
-use url::Url;
+pub mod auth;
+pub mod booking;
+pub mod config;
+pub mod error_handling;
+pub mod event;
+pub mod generic_id;
+pub mod person;
+pub mod square_api;
+pub mod ticket;
+pub mod user;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginResponse {
-    pub url: Url,
+cfg_if::cfg_if! {
+if #[cfg(not(target_arch = "wasm32"))] {
+    pub mod axum;
+    pub mod db;
+    use surrealdb::{engine::any::Any, Surreal};
+    use config::Config;
+}}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone)]
+pub struct AppState {
+    pub config: Config,
+    pub db: Surreal<Any>,
 }
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OAuthReturnResponse {
-    pub session_id: String,
-    pub user_id: String,
-    pub given_name: String,
-    pub family_name: String,
-    pub email: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ErrorResponse {
-    pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[allow(dead_code)]
-pub struct UserInfoReponse {
-    pub id: String,
-    pub given_name: String,
-    pub family_name: String,
-    pub picture: String,
-    pub email: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct NewUser {
-    pub given_name: String,
-    pub family_name: String,
-    // pub picture: String,
-    pub email: String,
-    pub password: String,
-    pub phone: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct User {
-    pub id: String,
-    pub given_name: String,
-    pub family_name: String,
-    // pub picture: String,
-    pub email: String,
-    pub phone: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub enum CreateUserResponse {
-    Error(ErrorResponse),
-    Ok(),
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct EmailPassword {
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Session {
-    pub id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Email {
-    pub email: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OAuthReturn {
-    pub state: String,
-    pub code: String,
-}
-
-
 

@@ -18,6 +18,10 @@ impl<T> From<String> for GenericId<T> {
     fn from(s: String) -> Self { Self(s, std::marker::PhantomData) }
 }
 
+impl<T> From<&str> for GenericId<T> {
+    fn from(s: &str) -> Self { Self(s.to_string(), std::marker::PhantomData) }
+}
+
 impl<T> From<GenericId<T>> for String {
     fn from(b: GenericId<T>) -> Self { b.0 }
 }

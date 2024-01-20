@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use happenings::event::{list_events, Event};
+use common::event::{list_events, Event};
 use leptos::*;
 use leptos_struct_table::*;
 use serde::{Deserialize, Serialize};

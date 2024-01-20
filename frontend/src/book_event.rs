@@ -1,20 +1,20 @@
-use std::collections::HashMap;
-
 use crate::app::{MaybePersonSignal, SignInSignal, SignInStatus};
 use crate::components::controls::*;
 use crate::components::modal::Modal;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
-use happenings::booking::{self, get_booking, BookingId, CreateBooking, Status};
-use happenings::event::{get_event, Event, EventId};
-use happenings::person::{get_person, Person};
-use happenings::ticket::Ticket;
+
+use common::booking::{self, get_booking, BookingId, CreateBooking, Status};
+use common::event::{get_event, Event, EventId};
+use common::person::{get_person, Person};
+use common::ticket::Ticket;
 use leptos::*;
 use leptos_icons::FaIcon::*;
 use leptos_router::{use_params_map, Outlet};
 use log::*;
 use rust_decimal::Decimal;
+use std::collections::HashMap;
 use url::Url;
 
 #[component]
@@ -111,7 +111,7 @@ pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl I
             .into_iter()
             .enumerate()
             .map(|(i, t)| {
-                let special = if t.dietary_requirements != "" {
+                let special = if !t.dietary_requirements.is_empty() {
                     t.dietary_requirements
                 } else {
                     "no special requirements".to_string()
@@ -266,7 +266,7 @@ pub fn ListBookings() -> impl IntoView {
             <thead>
               <tr>
                 <th>Contact</th>
-                <For each=move || ticket_types() key=move |tt| tt.name.clone() let:tt>
+                <For each=ticket_types key=move |tt| tt.name.clone() let:tt>
                   <th>{tt.name} Tickets</th>
                 </For>
                 <th>Order Value</th>
@@ -292,7 +292,7 @@ pub fn ListBookings() -> impl IntoView {
             <tfoot>
               <tr>
                 <td>Totals:</td>
-                <For each=move || ticket_types() key=move |tt| tt.name.clone() let:tt>
+                <For each=ticket_types key=move |tt| tt.name.clone() let:tt>
                   <td class="has-text-right">{move || total_tickets().get(tt.name.as_str()).cloned().unwrap_or(0)}</td>
                 </For>
                 <td class="has-text-right">{move || format!("£{}", total_ticket_value())}</td>
@@ -311,7 +311,7 @@ pub fn BookingPage() -> impl IntoView {
     let params = use_params_map();
     let event_res = create_resource(
         move || params.with(|p| -> EventId { p.get("id").cloned().unwrap_or_default().into() }),
-        move |id| get_event(id),
+        get_event,
     );
 
     {

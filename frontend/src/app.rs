@@ -8,7 +8,7 @@ use crate::book_event::{Booking, BookingPage, BookingRoot, CheckPayment, EventPa
 use crate::events::Events;
 use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
-use happenings::person::{get_logged_in_person, Person};
+use common::person::{get_logged_in_person, Person};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignInStatus {
@@ -69,7 +69,6 @@ pub fn App() -> impl IntoView {
 
     provide_context(set_session_id);
 
-    // let (get_session, _, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
     let user_info = create_resource(session_id, |sid| async move {
         match sid {
             SessionID::Set(_) => match get_logged_in_person().await {
@@ -84,7 +83,6 @@ pub fn App() -> impl IntoView {
     });
 
     let maybe_person = Signal::derive(move || user_info.get().flatten());
-    // let maybe_person = Signal::derive(move || user_info.get().and_then(|r| r.ok()));
     provide_context::<MaybePersonSignal>(maybe_person);
     view! {
       <Router>

@@ -1,16 +1,64 @@
-[package]
- name = "common"
- version = "0.1.0"
- edition = "2021"
 
- # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[package]
+  edition = "2021"
+  name = "common"
+  version = "0.1.0"
 
 [dependencies]
- serde = { version = "1.0.193", features = ["derive"] }
- reqwest = { version = "0.11.22", default-features = false, features = [
-  "rustls-tls",
-  "cookies",
-  "trust-dns",
-  "json",
- ] }
- url = { version = "2.5.0", features = ["serde"] }
+  anyhow = { workspace = true }
+  cfg-if = { workspace = true }
+  chrono = { workspace = true, features = ["serde"] }
+  indexmap = { workspace = true }
+  leptos = { workspace = true }
+  macros = { workspace = true }
+  oauth2 = { workspace = true, default-features = false }
+  rand = { workspace = true }
+  reqwest = { workspace = true, default-features = false, features = [
+    "cookies",
+    "json",
+    "rustls-tls",
+    "trust-dns",
+  ] }
+  rust_decimal = { workspace = true }
+  rust_decimal_macros = { workspace = true }
+  serde = { workspace = true, features = ["derive"] }
+  tracing = { workspace = true }
+  uuid = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+  axum = { workspace = true }
+  axum-extra = { workspace = true }
+  axum-macros = { workspace = true }
+  dotenv = { workspace = true }
+  figment = { workspace = true, features = ["env", "toml"] }
+  futures = { workspace = true }
+  futures-util = { workspace = true }
+  hyper = { workspace = true }
+  hyper-util = { workspace = true, features = [
+    "http1",
+    "server-auto",
+    "tokio",
+  ] }
+  leptos_axum_hack = { workspace = true }
+  mime_guess = { workspace = true }
+  oauth2 = { workspace = true, features = ["reqwest"] }
+
+  once_cell = { workspace = true }
+  phonenumber = { workspace = true }
+  sanitizer = { workspace = true }
+  scopeguard = { workspace = true }
+  serde_qs = { workspace = true }
+  sha256 = { workspace = true }
+  surrealdb = { workspace = true } #features = ["kv-mem", "kv-rocksdb"]
+  tokio = { version = "1.34.0", features = [
+    "full",
+    "macros",
+    "rt-multi-thread",
+  ] }
+  tokio-util = { workspace = true }
+  tower = { workspace = true }
+  tower-http = { workspace = true, features = ["trace", "tracing"] }
+  tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[dev-dependencies]
+  axum-test = "14.0.0"

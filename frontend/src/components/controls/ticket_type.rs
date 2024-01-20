@@ -1,4 +1,4 @@
-use happenings::ticket::{TicketType, TicketTypes};
+use common::ticket::{TicketType, TicketTypes};
 use leptos::logging::*;
 use leptos::*;
 
