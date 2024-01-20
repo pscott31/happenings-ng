@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod booking;
 pub mod config;
 pub mod event;

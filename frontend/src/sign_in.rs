@@ -1,4 +1,5 @@
 use common::NewUser;
+use happenings::auth::oauth::oauth_link;
 use leptos::*;
 use logging::*;
 use serde::de::DeserializeOwned;
@@ -275,15 +276,18 @@ pub fn SignInWelcome() -> impl IntoView {
     let sign_in_signal = use_context::<SignInSignal>().unwrap().0;
     let set_session = use_context::<WriteSignal<SessionID>>().unwrap();
 
-    // let oauth_link = create_action(move |()| async {
-    //     let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
-    //     resp.url.to_string()
-    // });
+    // let oauth_link = create_resource(
+    //     || {},
+    //     move |()| async {
+    //         let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
+    //         resp.url.to_string()
+    //     },
+    // );
+
     let oauth_link = create_resource(
         || {},
         move |()| async {
-            let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
-            resp.url.to_string()
+            oauth_link().await.unwrap() // TODO
         },
     );
 

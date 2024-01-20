@@ -41,6 +41,16 @@ impl From<DbPerson> for Person {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct NewDbPerson {
+    pub given_name: String,
+    pub family_name: String,
+    pub picture: Option<String>,
+    pub email: String,
+    pub phone: Option<String>,
+}
+
 impl TableName for Person {
     const TABLE_NAME: &'static str = "person";
 }
