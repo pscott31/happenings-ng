@@ -6,13 +6,14 @@ mod server_fns;
 
 use crate::error_handling::AppError;
 use anyhow::anyhow;
-use axum::{async_trait, extract::{FromRequestParts, Path, State}, http::{header::{self}, request::Parts}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
+use axum::{async_trait, body::Body, extract::{FromRequestParts, Path, RawQuery, Request, State}, http::{header::{self}, request::Parts}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
 use axum_extra::extract::CookieJar;
 use dotenv::dotenv;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
 use happenings_lib::AppState;
 use happenings_lib::{config::Config, person::Person};
 use happenings_lib::{db, person::get_person};
+use leptos::provide_context;
 use rust_embed::RustEmbed;
 use server_fns::get_session;
 use surrealdb::{engine::any::{connect, Any}, opt::auth::Root, Surreal};
@@ -100,6 +101,29 @@ where
     }
 }
 
+pub async fn my_handler(
+    Path(fn_name): Path<String>,
+    RawQuery(query): RawQuery,
+    State(state): State<AppState>,
+    req: Request<Body>,
+) -> impl IntoResponse {
+    // impl Fn() + 'static + Clone + Send,
+    let additional_context = || {
+        let jar = CookieJar::from_request_parts(parts, state).await.unwrap();
+
+        let Ok(session) = get_session(&state, jar).await else {
+            return Err("couldn't get session".to_string());
+        };
+
+        let Ok(person) = get_person(session.user.into()).await else {
+            return Err("couldn't get person".to_string());
+        };
+
+        provide_context(LoggedInUser(person))
+    };
+
+    leptos_axum_hack::handle_server_fns(fn_name, query, app_state, additional_context).await
+}
 fn build_app(db: Surreal<Any>, config: Config) -> Router {
     Router::new()
         .route("/", get(root_handler))

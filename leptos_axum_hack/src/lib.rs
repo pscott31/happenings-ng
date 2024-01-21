@@ -2,6 +2,7 @@ use axum::async_trait;
 // use crate::{db, AppState};
 use axum::body::{Body, Bytes};
 use axum::extract::{FromRequest, FromRequestParts, Host, Path, RawQuery, Request, State};
+use axum::handler::Handler;
 use axum::http::{header, HeaderMap};
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -84,14 +85,14 @@ pub struct GenericExtractor<T>(T);
 //     type Rejection = String;
 // }
 
-pub async fn handle_server_fns<AS: Clone + Send + 'static, T: Clone + Send + 'static>(
-    GenericExtractor::<T>(extra): GenericExtractor<T>,
+// fn wibble() -> impl Handler {}
+pub async fn handle_server_fns<AS: Clone + Send + 'static>(
     Path(fn_name): Path<String>,
     // headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AS>,
-    host: Host,
-    jar: CookieJar,
+    // host: Host,
+    // jar: CookieJar,
     req: Request<Body>,
 ) -> impl IntoResponse {
     let fn_name = fn_name
@@ -106,9 +107,8 @@ pub async fn handle_server_fns<AS: Clone + Send + 'static, T: Clone + Send + 'st
             runtime.dispose();
         }
         provide_context(app_state.clone());
-        provide_context(host);
+        // provide_context(host);
         provide_context(ResponseOptions::default());
-        provide_context(extra);
         // todo put back
         // if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
         //     if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
