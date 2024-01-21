@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use happenings::list_users;
+use happenings_lib::list_users;
 use leptos::*;
 use leptos_struct_table::*;
 use serde::{Deserialize, Serialize};

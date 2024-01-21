@@ -1,5 +1,5 @@
 use crate::components::controls::*;
-use happenings::ticket::Ticket;
+use happenings_lib::ticket::Ticket;
 use leptos::*;
 
 #[component]

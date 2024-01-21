@@ -1,7 +1,7 @@
 use common::NewUser;
-use happenings::auth::oauth::{check, redirect, OAuthRedirect};
-use happenings::auth::password;
-use happenings::person::person_exists;
+use happenings_lib::auth::oauth::{check, redirect, OAuthRedirect};
+use happenings_lib::auth::password;
+use happenings_lib::person::person_exists;
 use leptos::*;
 use leptos_router::*;
 use logging::*;
@@ -174,7 +174,7 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
     let submit = create_action(move |new_user: &NewUser| {
         let new_user = new_user.clone();
         async move {
-            let res = happenings::auth::password::signup_password(
+            let res = happenings_lib::auth::password::signup_password(
                 new_user.email.clone(),
                 new_user.password.clone(),
                 new_user.given_name,
@@ -183,7 +183,7 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
             )
             .await; //todo - check resut
 
-            match happenings::auth::password::signin(new_user.email, new_user.password).await {
+            match happenings_lib::auth::password::signin(new_user.email, new_user.password).await {
                 Err(e) => {}
                 Ok(session_id) => {
                     set_session_id(SessionID::Set(session_id));
@@ -447,17 +447,16 @@ where
         .ok_or(format!("failed to open popup window"))?;
 
     // TODO: How do we remove this once we're done?
-    let _remove_listener =
-        leptos_use::use_event_listener(window(), ev::message, move |evt| {
-            if evt.origin() == window().origin() {
-                if let Some(msg_str) = evt.data().as_string() {
-                    if msg_str == "auth_ok" {
-                        popup.close().unwrap(); // todo
-                        on_success();
-                    }
+    let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
+        if evt.origin() == window().origin() {
+            if let Some(msg_str) = evt.data().as_string() {
+                if msg_str == "auth_ok" {
+                    popup.close().unwrap(); // todo
+                    on_success();
                 }
             }
-        });
+        }
+    });
 
     Ok(())
 }

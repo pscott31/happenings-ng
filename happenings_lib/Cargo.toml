@@ -1,71 +1,80 @@
 
 [package]
-name = "happenings_lib"
-version = "0.1.0"
-edition = "2021"
+ name = "happenings_lib"
+ version = "0.1.0"
+ edition = "2021"
 
 [dependencies]
-leptos_axum_bodge = { workspace = true }
-common = { path = "../common" }
-anyhow = "1.0.75"
-rand = "0.8.5"
-leptos = "0.5.4"
-reqwest = { version = "0.11.22", default-features = false, features = [
-    "rustls-tls",
-    "cookies",
-    "trust-dns",
-    "json",
-] }
-chrono = { version = "0.4.31", features = ["serde"] }
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-tracing = "0.1.40"
 
-cfg-if = "1.0.0"
-rust_decimal = "1.33.1"
+ common = { path = "../common" }
+ anyhow = "1.0.75"
+ rand = "0.8.5"
+ leptos = "0.5.4"
+ reqwest = { version = "0.11.22", default-features = false, features = [
+  "rustls-tls",
+  "cookies",
+  "trust-dns",
+  "json",
+ ] }
+ chrono = { version = "0.4.31", features = ["serde"] }
+ serde = { version = "1.0.193", features = ["derive"] }
+ serde_json = "1.0.108"
+ tracing = "0.1.40"
 
-happenings_macro = { path = "../happenings_macro" }
-rust_decimal_macros = "1.33.1"
-uuid = "1.6.1"
-indexmap = "2.1.0"
-oauth2 = { version = "4.4.2", default-features = false }
+ cfg-if = "1.0.0"
+ rust_decimal = "1.33.1"
+
+ happenings_macro = { path = "../happenings_macro" }
+ rust_decimal_macros = "1.33.1"
+ uuid = "1.6.1"
+ indexmap = "2.1.0"
+ oauth2 = { version = "4.4.2", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-scopeguard = "1.2.0"
-phonenumber = "0.3.3"
-sanitizer = "0.1.6"
-axum = "0.7.2"
-tokio = { version = "1.34.0", features = ["full", "macros", "rt-multi-thread"] }
-# surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
-surrealdb = { version = "1.0.0" }
-dotenv = "0.15.0"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-hyper = "1.0.1"
-tower = "0.4.13"
-hyper-util = { version = "0.1.1", features = ["server-auto", "tokio", "http1"] }
-mime_guess = "2.0.4"
-figment = { version = "0.10.12", features = ["toml", "env"] }
-tower-http = { version = "0.5.0", features = ["tracing", "trace"] }
-futures-util = "0.3.29"
-sha256 = "1.4.0"
-serde_qs = "0.12.0"
-leptos_axum = "0.5.4"
-axum-macros = "0.4.0"
-tokio-util = "0.7.10"
-once_cell = "1.19.0"
-futures = "0.3.30"
+ leptos_axum_bodge = { workspace = true }
+ scopeguard = "1.2.0"
+ phonenumber = "0.3.3"
+ sanitizer = "0.1.6"
+ axum = "0.7.2"
+ tokio = { version = "1.34.0", features = [
+  "full",
+  "macros",
+  "rt-multi-thread",
+ ] }
+ # surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
+ surrealdb = { version = "1.0.0" }
+ dotenv = "0.15.0"
+ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+ hyper = "1.0.1"
+ tower = "0.4.13"
+ hyper-util = { version = "0.1.1", features = [
+  "server-auto",
+  "tokio",
+  "http1",
+ ] }
+ mime_guess = "2.0.4"
+ figment = { version = "0.10.12", features = ["toml", "env"] }
+ tower-http = { version = "0.5.0", features = ["tracing", "trace"] }
+ futures-util = "0.3.29"
+ sha256 = "1.4.0"
+ serde_qs = "0.12.0"
+ leptos_axum = "0.5.4"
+ axum-macros = "0.4.0"
+ tokio-util = "0.7.10"
+ once_cell = "1.19.0"
+ futures = "0.3.30"
 
 [build-dependencies]
-anyhow = "1.0.75"
-jobserver = "0.1.27"
-wasm-bindgen-cli-support = "0.2.89"
-# frontend = { path = "./frontend", optional = true }
-#  frontend = { path = "./frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
+ anyhow = "1.0.75"
+ jobserver = "0.1.27"
+ wasm-bindgen-cli-support = "0.2.89"
+ # frontend = { path = "./frontend", optional = true }
+ #  frontend = { path = "./frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
 
 [dev-dependencies]
-axum-test = "14.0.0"
-# frontend = { path = "frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
-# frontend = { path = "frontend" }
+ axum-test = "14.0.0"
+ # frontend = { path = "frontend", artifact = "cdylib", target = "wasm32-unknown-unknown" }
+ # frontend = { path = "frontend" }
 
-# [features]
-# build-binary = ["frontend"]
+ # [features]
+ # build-binary = ["frontend"]

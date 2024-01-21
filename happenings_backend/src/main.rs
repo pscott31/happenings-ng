@@ -9,9 +9,9 @@ use anyhow::anyhow;
 use axum::{extract::{Path, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
 use dotenv::dotenv;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
-use happenings::config::Config;
-use happenings::db;
-use happenings::AppState;
+use happenings_lib::config::Config;
+use happenings_lib::db;
+use happenings_lib::AppState;
 use rust_embed::RustEmbed;
 use surrealdb::{engine::any::{connect, Any}, opt::auth::Root, Surreal};
 use tracing::*;
@@ -53,7 +53,7 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
     info!("connecting to database at {:?}", &config.db.endpoint);
     let db = connect(&config.db.endpoint).await?;
 
-    if let Some(happenings::config::Credentials::Root {
+    if let Some(happenings_lib::config::Credentials::Root {
         ref username,
         ref password,
     }) = config.db.credentials
@@ -82,7 +82,7 @@ where
     type Rejection = String;
     async fn from_request_parts(parts: &mut Parts, state: State) -> Result<Self, Self::Rejection> {
         if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-            if let Ok(person) = happenings::person::get_person(session.user.into()).await {
+            if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
                 return person;
             }
         }
@@ -99,7 +99,7 @@ fn build_app(db: Surreal<Any>, config: Config) -> Router {
         .route("/api/*fn_name", post(server_fns::handle_server_fns))
         .route("/api/*fn_name", get(server_fns::handle_server_fns))
         .fallback(get(root_handler))
-        .with_state(happenings::AppState { db, config })
+        .with_state(happenings_lib::AppState { db, config })
 }
 
 async fn user_handler(
@@ -191,7 +191,7 @@ async fn static_handler(Path(path): Path<String>) -> impl IntoResponse {
 mod tests {
     use super::*;
     use ::axum_test::TestServer;
-    use happenings::config::Config;
+    use happenings_lib::config::Config;
 
     #[tokio::test]
     async fn it_works() -> anyhow::Result<()> {
@@ -248,7 +248,7 @@ mod tests {
 
     fn test_config() -> Config {
         Config {
-            db: happenings::config::DB {
+            db: happenings_lib::config::DB {
                 endpoint: "mem://".to_string(),
                 credentials: None,
                 namespace: "test".to_string(),

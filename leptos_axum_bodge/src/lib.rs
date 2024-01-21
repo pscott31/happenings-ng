@@ -74,7 +74,7 @@ struct ExtraContext<F>(F);
 //     async fn from_request(req: &mut Request, state: &S) {
 //         || {
 //             if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-//                 if let Ok(person) = happenings::person::get_person(session.user.into()).await {
+//                 if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
 //                     provide_context(person);
 //                 }
 //             }
@@ -114,7 +114,7 @@ where
         provide_context(extra);
         // todo put back
         // if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-        //     if let Ok(person) = happenings::person::get_person(session.user.into()).await {
+        //     if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
         //         provide_context(person);
         //     }
         // }
@@ -160,19 +160,18 @@ where
             header_ref.extend(res_headers.drain());
         };
 
-        let res =
-            match payload {
-                Payload::Binary(data) => res
-                    .header("Content-Type", "application/cbor")
-                    .body(Body::from(data)),
-                Payload::Url(data) => res
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .body(Body::from(data)),
-                Payload::Json(data) => res
-                    .header("Content-Type", "application/json")
-                    .body(Body::from(data)),
-            }
-            .expect("could not build response");
+        let res = match payload {
+            Payload::Binary(data) => res
+                .header("Content-Type", "application/cbor")
+                .body(Body::from(data)),
+            Payload::Url(data) => res
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(Body::from(data)),
+            Payload::Json(data) => res
+                .header("Content-Type", "application/json")
+                .body(Body::from(data)),
+        }
+        .expect("could not build response");
         // Ok::<hyper::Response<axum::body::Body>, E>((res)
         Result::<Response<Body>, Fail>::Ok(res)
     };

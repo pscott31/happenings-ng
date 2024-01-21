@@ -4,7 +4,7 @@ pub mod password;
 use crate::error_handling::AppError;
 use anyhow::anyhow;
 use chrono::Duration;
-use happenings::db::*;
+use happenings_lib::db::*;
 use std::ops::Add;
 use surrealdb::{engine::any::Any, sql::Thing, Surreal};
 

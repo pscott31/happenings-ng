@@ -1,5 +1,5 @@
 // use crate::AppState;
-// use happenings::config;
+// use happenings_lib::config;
 
 // use crate::db::*;
 // use crate::error_handling::*;
