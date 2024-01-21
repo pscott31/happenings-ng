@@ -63,7 +63,7 @@ impl IntoResponse for Fail {
     }
 }
 
-struct ExtraContext<F>(F);
+pub struct GenericExtractor<T>(T);
 
 // #[async_trait]
 // impl<S> FromRequest<S> for ExtraContext<F>
@@ -84,19 +84,16 @@ struct ExtraContext<F>(F);
 //     type Rejection = String;
 // }
 
-pub async fn handle_server_fns<T: Clone, F>(
-    T(extra): T,
+pub async fn handle_server_fns<AS: Clone + Send + 'static, T: Clone + Send + 'static>(
+    GenericExtractor::<T>(extra): GenericExtractor<T>,
     Path(fn_name): Path<String>,
     // headers: HeaderMap,
     RawQuery(query): RawQuery,
-    State(app_state): State<T>,
+    State(app_state): State<AS>,
     host: Host,
     jar: CookieJar,
     req: Request<Body>,
-) -> impl IntoResponse
-where
-    F: Fn() -> (),
-{
+) -> impl IntoResponse {
     let fn_name = fn_name
         .strip_prefix('/')
         .map(|fn_name| fn_name.to_string())
@@ -160,18 +157,19 @@ where
             header_ref.extend(res_headers.drain());
         };
 
-        let res = match payload {
-            Payload::Binary(data) => res
-                .header("Content-Type", "application/cbor")
-                .body(Body::from(data)),
-            Payload::Url(data) => res
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(Body::from(data)),
-            Payload::Json(data) => res
-                .header("Content-Type", "application/json")
-                .body(Body::from(data)),
-        }
-        .expect("could not build response");
+        let res =
+            match payload {
+                Payload::Binary(data) => res
+                    .header("Content-Type", "application/cbor")
+                    .body(Body::from(data)),
+                Payload::Url(data) => res
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(Body::from(data)),
+                Payload::Json(data) => res
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(data)),
+            }
+            .expect("could not build response");
         // Ok::<hyper::Response<axum::body::Body>, E>((res)
         Result::<Response<Body>, Fail>::Ok(res)
     };

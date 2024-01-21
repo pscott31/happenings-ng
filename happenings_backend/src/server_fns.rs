@@ -96,105 +96,105 @@ pub async fn get_session(
     Ok(session)
 }
 
-#[debug_handler]
-pub async fn handle_server_fns(
-    Path(fn_name): Path<String>,
-    // headers: HeaderMap,
-    RawQuery(query): RawQuery,
-    State(app_state): State<AppState>,
-    host: Host,
-    jar: CookieJar,
-    req: Request<Body>,
-) -> impl IntoResponse {
-    let fn_name = fn_name
-        .strip_prefix('/')
-        .map(|fn_name| fn_name.to_string())
-        .unwrap_or(fn_name);
+// #[debug_handler]
+// pub async fn handle_server_fns(
+//     Path(fn_name): Path<String>,
+//     // headers: HeaderMap,
+//     RawQuery(query): RawQuery,
+//     State(app_state): State<AppState>,
+//     host: Host,
+//     jar: CookieJar,
+//     req: Request<Body>,
+// ) -> impl IntoResponse {
+//     let fn_name = fn_name
+//         .strip_prefix('/')
+//         .map(|fn_name| fn_name.to_string())
+//         .unwrap_or(fn_name);
 
-    // The future returned server_fn_by_path is !Send, so we can't just await it
-    let task = || async move {
-        let runtime = create_runtime();
-        defer! {
-            runtime.dispose();
-        }
-        provide_context(app_state.clone());
-        provide_context(host);
-        provide_context(ResponseOptions::default());
-        if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-            if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
-                provide_context(person);
-            }
-        }
+//     // The future returned server_fn_by_path is !Send, so we can't just await it
+//     let task = || async move {
+//         let runtime = create_runtime();
+//         defer! {
+//             runtime.dispose();
+//         }
+//         provide_context(app_state.clone());
+//         provide_context(host);
+//         provide_context(ResponseOptions::default());
+//         if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
+//             if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
+//                 provide_context(person);
+//             }
+//         }
 
-        let server_fn = server_fn_by_path(fn_name.as_str()).ok_or(Fail::BadServerPath(fn_name))?;
+//         let server_fn = server_fn_by_path(fn_name.as_str()).ok_or(Fail::BadServerPath(fn_name))?;
 
-        let (_parts, body) = req.into_parts();
-        let body = axum::body::to_bytes(body, MAX_BODY_SIZE)
-            .await
-            .unwrap_or_default();
+//         let (_parts, body) = req.into_parts();
+//         let body = axum::body::to_bytes(body, MAX_BODY_SIZE)
+//             .await
+//             .unwrap_or_default();
 
-        let query: Bytes = query.unwrap_or("".to_string()).into();
-        let data = match &server_fn.encoding() {
-            Encoding::Url | Encoding::Cbor => body,
-            Encoding::GetJSON | Encoding::GetCBOR => query,
-        };
+//         let query: Bytes = query.unwrap_or("".to_string()).into();
+//         let data = match &server_fn.encoding() {
+//             Encoding::Url | Encoding::Cbor => body,
+//             Encoding::GetJSON | Encoding::GetCBOR => query,
+//         };
 
-        let payload = server_fn
-            .call((), data.as_ref())
-            .await
-            .map_err(|e| Fail::ServerFnError(e))?;
+//         let payload = server_fn
+//             .call((), data.as_ref())
+//             .await
+//             .map_err(|e| Fail::ServerFnError(e))?;
 
-        let mut res = Response::builder();
-        res = res.status(StatusCode::OK);
+//         let mut res = Response::builder();
+//         res = res.status(StatusCode::OK);
 
-        // Add headers from ResponseParts if they exist. These should be added as long
-        // as the server function returns an OK response
-        let res_options = use_context::<ResponseOptions>();
-        let res_options_outer = res_options.unwrap().0;
-        let res_options_inner = res_options_outer.read();
-        let (status, mut res_headers) =
-            (res_options_inner.status, res_options_inner.headers.clone());
+//         // Add headers from ResponseParts if they exist. These should be added as long
+//         // as the server function returns an OK response
+//         let res_options = use_context::<ResponseOptions>();
+//         let res_options_outer = res_options.unwrap().0;
+//         let res_options_inner = res_options_outer.read();
+//         let (status, mut res_headers) =
+//             (res_options_inner.status, res_options_inner.headers.clone());
 
-        // Override StatusCode if it was set in a Resource or Element
-        res = match status {
-            Some(status) => res.status(status),
-            None => res,
-        };
+//         // Override StatusCode if it was set in a Resource or Element
+//         res = match status {
+//             Some(status) => res.status(status),
+//             None => res,
+//         };
 
-        // This must be after the default referrer
-        // redirect so that it overwrites the one above
-        if let Some(header_ref) = res.headers_mut() {
-            header_ref.extend(res_headers.drain());
-        };
+//         // This must be after the default referrer
+//         // redirect so that it overwrites the one above
+//         if let Some(header_ref) = res.headers_mut() {
+//             header_ref.extend(res_headers.drain());
+//         };
 
-        let res = match payload {
-            Payload::Binary(data) => res
-                .header("Content-Type", "application/cbor")
-                .body(Body::from(data)),
-            Payload::Url(data) => res
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(Body::from(data)),
-            Payload::Json(data) => res
-                .header("Content-Type", "application/json")
-                .body(Body::from(data)),
-        }
-        .expect("could not build response");
-        // Ok::<hyper::Response<axum::body::Body>, E>((res)
-        Result::<Response<Body>, Fail>::Ok(res)
-    };
+//         let res = match payload {
+//             Payload::Binary(data) => res
+//                 .header("Content-Type", "application/cbor")
+//                 .body(Body::from(data)),
+//             Payload::Url(data) => res
+//                 .header("Content-Type", "application/x-www-form-urlencoded")
+//                 .body(Body::from(data)),
+//             Payload::Json(data) => res
+//                 .header("Content-Type", "application/json")
+//                 .body(Body::from(data)),
+//         }
+//         .expect("could not build response");
+//         // Ok::<hyper::Response<axum::body::Body>, E>((res)
+//         Result::<Response<Body>, Fail>::Ok(res)
+//     };
 
-    let payload_result = get_task_pool().spawn_pinned(task).await;
+//     let payload_result = get_task_pool().spawn_pinned(task).await;
 
-    let resp = match payload_result {
-        Err(e) => Fail::JoinError(e).into_response(),
-        Ok(Err(e)) => e.into_response(),
-        Ok(Ok(resp)) => resp,
-    };
+//     let resp = match payload_result {
+//         Err(e) => Fail::JoinError(e).into_response(),
+//         Ok(Err(e)) => e.into_response(),
+//         Ok(Ok(resp)) => resp,
+//     };
 
-    resp
-    // .map_err(|e| );
-    // .and_then(std::convert::identity);
-}
+//     resp
+//     // .map_err(|e| );
+//     // .and_then(std::convert::identity);
+// }
 
 /// Allows you to override details of the HTTP response like the status code and add Headers/Cookies.
 #[derive(Debug, Clone, Default)]

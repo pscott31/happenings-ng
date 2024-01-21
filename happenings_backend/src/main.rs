@@ -6,13 +6,15 @@ mod server_fns;
 
 use crate::error_handling::AppError;
 use anyhow::anyhow;
-use axum::{extract::{Path, State}, http::header::{self}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
+use axum::{async_trait, extract::{FromRequestParts, Path, State}, http::{header::{self}, request::Parts}, http::{HeaderMap, StatusCode}, response::IntoResponse, routing::{get, post}, Json, Router};
+use axum_extra::extract::CookieJar;
 use dotenv::dotenv;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
-use happenings_lib::config::Config;
-use happenings_lib::db;
 use happenings_lib::AppState;
+use happenings_lib::{config::Config, person::Person};
+use happenings_lib::{db, person::get_person};
 use rust_embed::RustEmbed;
+use server_fns::get_session;
 use surrealdb::{engine::any::{connect, Any}, opt::auth::Root, Surreal};
 use tracing::*;
 
@@ -74,18 +76,27 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
 struct LoggedInUser(Person);
 
 #[async_trait]
-impl FromRequestParts<State> for LoggedInUser
+impl FromRequestParts<AppState> for LoggedInUser
 where
-    S: Send + Sync,
+    // S: Send + Sync,
     Self: Sized,
 {
     type Rejection = String;
-    async fn from_request_parts(parts: &mut Parts, state: State) -> Result<Self, Self::Rejection> {
-        if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-            if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
-                return person;
-            }
-        }
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let jar = CookieJar::from_request_parts(parts, state).await.unwrap();
+
+        let Ok(session) = get_session(&state, jar).await else {
+            return Err("couldn't get session".to_string());
+        };
+
+        let Ok(person) = get_person(session.user.into()).await else {
+            return Err("couldn't get person".to_string());
+        };
+
+        Ok(LoggedInUser(person))
     }
 }
 
@@ -96,8 +107,8 @@ fn build_app(db: Surreal<Any>, config: Config) -> Router {
         .route("/app.js", get(js_handler))
         .route("/static/*path", get(static_handler))
         .route("/api/user", post(user_handler)) // TODO: rename current_user?
-        .route("/api/*fn_name", post(server_fns::handle_server_fns))
-        .route("/api/*fn_name", get(server_fns::handle_server_fns))
+        .route("/api/*fn_name", post(leptos_axum_hack::handle_server_fns))
+        .route("/api/*fn_name", get(leptos_axum_hack::handle_server_fns))
         .fallback(get(root_handler))
         .with_state(happenings_lib::AppState { db, config })
 }

@@ -1,8 +1,6 @@
-[lib]
-crate-type = ["cdylib"]
 
 [package]
-name = "leptos_axum_bodge"
+name = "leptos_axum_hack"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,10 +10,10 @@ edition = "2021"
 axum-macros = { workspace = true }
 axum-extra = { workspace = true, features = ["cookie"] }
 axum = { workspace = true }
-leptos = { workspace = true }
+leptos = { workspace = true, features = ["ssr"] }
 parking_lot = { workspace = true }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
-tokio-util = { workspace = true }
+tokio-util = { workspace = true, features = ['rt'] }
 once_cell = { workspace = true }
 scopeguard = { workspace = true }
 # happenings_lib = { workspace = true }

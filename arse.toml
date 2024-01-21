@@ -1,18 +1,23 @@
 
-[[bin]]
-name = "happenings"
-path = "src/main.rs"
+[workspace]
+members = [
+    "happenings_frontend",
+    "common",
+    "happenings_backend",
+    "happenings_macro",
+    "happenings_lib",
+    "leptos_axum_hack",
+]
+resolver = "2"
 
-[package]
-name = "happenings_backend"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
+[workspace.dependencies]
+leptos_axum_hack = { { workspace = true }}
+# surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
 anyhow = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true, features = ["cookie"] }
 axum-macros = { workspace = true }
+axum-test = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 common = { workspace = true }
 derive_builder = { workspace = true }
@@ -22,7 +27,7 @@ happenings_lib = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true, features = ["server-auto", "tokio", "http1"] }
 leptos = { workspace = true }
-leptos_axum_hack = { workspace = true }
+leptos_axum = { workspace = true }
 mime_guess = { workspace = true }
 oauth2 = { workspace = true }
 once_cell = { workspace = true }
@@ -38,17 +43,17 @@ rust-embed = { workspace = true }
 scopeguard = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 sha256 = { workspace = true }
-surrealdb = { workspace = true } #features = ["kv-mem", "kv-rocksdb"]
+surrealdb = { workspace = true }
 tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
-tokio-util = { workspace = true }
-tower = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
-
-
-[build-dependencies]
-anyhow = "1.0.75"
+tokio-util = "0.7.10"
+tower = "0.4.13"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 wasm-bindgen-cli-support = "0.2.89"
 
-[dev-dependencies]
-axum-test = { workspace = true }
+# # TODO - just for wasm?
+# [profile.release]
+# #  inherits = "release"
+# opt-level = 'z'
+# lto = true
+# codegen-units = 1
