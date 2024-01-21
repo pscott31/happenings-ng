@@ -1,6 +1,9 @@
 use common::NewUser;
-use happenings::auth::oauth::oauth_link;
+use happenings::auth::oauth::{check, redirect, OAuthRedirect};
+use happenings::auth::password;
+use happenings::person::person_exists;
 use leptos::*;
+use leptos_router::*;
 use logging::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -49,8 +52,10 @@ pub fn SignInPassword(email: String) -> impl IntoView {
     let submit = create_action(move |ep: &common::EmailPassword| {
         let ep = ep.clone();
         async move {
-            let session: common::Session = call_api("api/auth/password/signin", &ep).await?;
-            set_session_id(SessionID::Set(session.id));
+            let session_id = password::signin(ep.email, ep.password)
+                .await
+                .map_err(|e| format!("{:?}", e))?;
+            set_session_id(SessionID::Set(session_id));
             sign_in_signal.set(SignInStatus::NotVisible);
             Ok::<(), String>(())
         }
@@ -68,7 +73,6 @@ pub fn SignInPassword(email: String) -> impl IntoView {
 
         <div class="block">
           <h1 class="subtitle my-4">Hello again</h1>
-          // <div>{move || format!("{:?}", submit.value())}</div>
           <div class="field">
             <div class="control is-expanded">
               <input
@@ -170,10 +174,23 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
     let submit = create_action(move |new_user: &NewUser| {
         let new_user = new_user.clone();
         async move {
-            call_api("api/auth/password/signup", &new_user).await?;
-            let session: common::Session = call_api("api/auth/password/signin", &new_user).await?;
-            set_session_id(SessionID::Set(session.id));
-            sign_in_signal.set(SignInStatus::NotVisible);
+            let res = happenings::auth::password::signup_password(
+                new_user.email.clone(),
+                new_user.password.clone(),
+                new_user.given_name,
+                new_user.family_name,
+                new_user.phone,
+            )
+            .await; //todo - check resut
+
+            match happenings::auth::password::signin(new_user.email, new_user.password).await {
+                Err(e) => {}
+                Ok(session_id) => {
+                    set_session_id(SessionID::Set(session_id));
+                    sign_in_signal.set(SignInStatus::NotVisible);
+                }
+            }
+
             Ok::<(), String>(())
         }
     });
@@ -279,57 +296,63 @@ pub fn SignInWelcome() -> impl IntoView {
     // let oauth_link = create_resource(
     //     || {},
     //     move |()| async {
-    //         let resp: common::LoginResponse = call_api("api/auth/oauth/link", ()).await.unwrap(); // TODO
-    //         resp.url.to_string()
+    //         redirect().await.unwrap() // TODO
     //     },
     // );
-
-    let oauth_link = create_resource(
-        || {},
-        move |()| async {
-            oauth_link().await.unwrap() // TODO
-        },
-    );
 
     let on_success = move || {
         set_session(SessionID::from_cookie());
         sign_in_signal.set(SignInStatus::NotVisible);
     };
 
-    let oauth_button = move || {
-        oauth_link.get().map(|url| {
-            view! {
-              <button
-                class="button"
-                type="button"
-                on:click=move |_| {
-                    let _ = oauth_popup(url.clone(), on_success);
-                }
-              >
+    let oauth_button = view! {
+      <button
+        class="button"
+        type="button"
+        on:click=move |_| {
+            let url = format!("{}/{}", OAuthRedirect::prefix(), OAuthRedirect::url());
+            let _ = oauth_popup(url.as_ref(), on_success);
+        }
+      >
 
-                <span class="icon is-medium">
-                  <GoogleLogoSVG/>
-                </span>
-                <span>Sign in with Google</span>
-              </button>
-            }
-        })
+        <span class="icon is-medium">
+          <GoogleLogoSVG/>
+        </span>
+        <span>Sign in with Google</span>
+      </button>
     };
+
+    // let oauth_button = move || {
+    //     oauth_link.get().map(|url| {
+    //         view! {
+    //           <button
+    //             class="button"
+    //             type="button"
+    //             on:click=move |_| {
+    //                 let _ = oauth_popup(OAuthRedirect::url(), on_success);
+    //             }
+    //           >
+
+    //             <span class="icon is-medium">
+    //               <GoogleLogoSVG/>
+    //             </span>
+    //             <span>Sign in with Google</span>
+    //           </button>
+    //         }
+    //     })
+    // };
 
     let (email, set_email) = create_signal("".to_string());
 
     let continue_pressed = create_action(move |email: &String| {
         let email = email.clone();
         async move {
-            let args = common::Email {
-                email: email.clone(),
-            };
-            let user_exists = call_api("api/user_exists", &args).await?;
+            let user_exists = person_exists(email.clone()).await?;
 
             let next_status = if user_exists {
-                SignInStatus::Password(email)
+                SignInStatus::Password(email.clone())
             } else {
-                SignInStatus::CreateUser(email)
+                SignInStatus::CreateUser(email.clone())
             };
             log!("updating sign_in_signal");
             sign_in_signal.set(next_status);
@@ -371,15 +394,39 @@ pub fn SignInWelcome() -> impl IntoView {
     }
 }
 
+#[derive(Params, PartialEq, Clone)]
+pub struct OAuthReturnParams {
+    pub state: String,
+    pub code: String,
+}
+
 #[component]
 pub fn OAuthReturn() -> impl IntoView {
-    let login_oauth = create_action(|()| validate_oauth_return());
-    login_oauth.dispatch(());
+    let params = use_query::<OAuthReturnParams>();
+    let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
+
+    let res = create_resource(params, move |param_res| async move {
+        let p = match param_res {
+            Ok(p) => p,
+            Err(e) => return Err(format!("unable to read oauth query params: {}", e)),
+        };
+
+        match check(p.state, p.code).await {
+            Err(e) => {
+                return Err(format!("oauth check failed: {:?}", e));
+            }
+            Ok(session_id) => {
+                set_session_id(SessionID::Set(session_id));
+                close_popup();
+                Ok(())
+            }
+        }
+    });
 
     view! {
       <div style="min-height: 100vh; display: grid;">
         <div style="place-self: center" class="is-size-2">
-          {move || match login_oauth.value().get() {
+          {move || match res.get() {
               None => "checking..".into_view(),
               Some(Ok(_)) => "success".into_view(),
               Some(Err(e)) => e.into_view(),
@@ -390,46 +437,32 @@ pub fn OAuthReturn() -> impl IntoView {
     }
 }
 
-fn oauth_popup<F>(url: String, on_success: F) -> Result<(), AppError>
+fn oauth_popup<F>(url: &str, on_success: F) -> Result<(), AppError>
 where
     F: Fn() + 'static,
 {
     let popup = window()
-        // .open_with_url_and_target(url.as_ref(), "popup")
-        .open_with_url_and_target_and_features(url.as_ref(), "popup", "popup")
+        .open_with_url_and_target_and_features(url, "popup", "popup")
         .map_err(|_| format!("failed to open popup window"))?
         .ok_or(format!("failed to open popup window"))?;
 
     // TODO: How do we remove this once we're done?
-    let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
-        if evt.origin() == window().origin() {
-            if let Some(msg_str) = evt.data().as_string() {
-                if msg_str == "auth_ok" {
-                    popup.close().unwrap(); // todo
-                    on_success();
+    let _remove_listener =
+        leptos_use::use_event_listener(window(), ev::message, move |evt| {
+            if evt.origin() == window().origin() {
+                if let Some(msg_str) = evt.data().as_string() {
+                    if msg_str == "auth_ok" {
+                        popup.close().unwrap(); // todo
+                        on_success();
+                    }
                 }
             }
-        }
-    });
+        });
 
     Ok(())
 }
 
-async fn validate_oauth_return() -> Result<(), AppError> {
-    let query_str = window()
-        .location()
-        .search()
-        .map_err(|_| format!("unable to get query"))?;
-
-    let query_str = query_str.strip_prefix("?").unwrap_or(query_str.as_ref());
-
-    let payload: common::OAuthReturn =
-        serde_qs::from_str(&query_str).map_err(|_| "unable to serialize payload")?;
-    let session: common::Session = call_api("api/auth/oauth/return", payload).await?;
-
-    let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
-    set_session_id(SessionID::Set(session.id));
-
+fn close_popup() {
     let opener = window().opener().unwrap();
     let post_message = Reflect::get(&opener, &JsValue::from_str("postMessage")).unwrap();
 
@@ -437,38 +470,7 @@ async fn validate_oauth_return() -> Result<(), AppError> {
     args.push(&JsValue::from_str("auth_ok"));
     let _ = Reflect::apply(post_message.unchecked_ref(), &opener, &args)
         .map_err(|_| "unable to push auth event");
-
-    Ok(())
 }
-
-// pub async fn check_user(
-//     session: Option<common::Session>,
-// ) -> Result<common::UserInfoReponse, AppError> {
-//     session.ok_or("no session in local storage")?;
-//     let person = call_api("api/user", ()).await?;
-//     Ok(person)
-// }
-
-// fn store_session(session: common::Session) {
-//     // TODO: Decide properly if we're using local storage or cookies
-//     #[cfg(target_arch = "wasm32")]
-//     wasm_cookies::set(
-//         "session_id",
-//         session.id.as_ref(),
-//         &wasm_cookies::CookieOptions::default(),
-//     );
-//     // let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-//     log!("{:?}", &session);
-//     // set_state(Some(session));
-// }
-
-// pub fn clear_session() {
-//     // let (_, set_state, _) = use_local_storage::<Option<common::Session>, JsonCodec>("session");
-//     // set_state(None);
-//     // TODO: Decide properly if we're using local storage or cookies
-//     #[cfg(target_arch = "wasm32")]
-//     wasm_cookies::delete("session_id");
-// }
 
 #[component]
 pub fn GoogleLogoSVG() -> impl IntoView {

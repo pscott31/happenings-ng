@@ -68,10 +68,16 @@ pub async fn get_logged_in_person() -> Result<Person, leptos::ServerFnError> {
     backend::get_logged_in().await
 }
 
+#[leptos::server(PersonExistw, "/api", "Url", "person_exists")]
+
+pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
+    backend::person_exists(email).await
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use super::*;
-    use crate::AppState;
+    use crate::{db, AppState};
     use leptos::{use_context, ServerFnError::ServerError};
 
     pub async fn get(id: PersonId) -> Result<Person, leptos::ServerFnError> {
@@ -92,6 +98,19 @@ mod backend {
         let logged_in_person =
             use_context::<Person>().ok_or(ServerError("No logged in person".to_string()))?;
         Ok(logged_in_person)
+    }
+
+    pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
+        let app_state =
+            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+
+        let people: Vec<db::Record> = app_state
+            .db
+            .query("SELECT * FROM person where email=$email;")
+            .bind(("email", &email))
+            .await?
+            .take(0)?;
+        Ok(!people.is_empty())
     }
 }
 

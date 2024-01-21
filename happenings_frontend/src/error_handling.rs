@@ -1,4 +1,4 @@
-use leptos::{IntoView, View};
+use leptos::{IntoView, ServerFnError, View};
 use leptos_macro::view;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -34,13 +34,26 @@ impl IntoView for AppError {
     }
 }
 
-impl<E> From<E> for AppError
-where
-    E: Into<String>,
-{
-    fn from(err: E) -> Self {
+// impl<E> From<E> for AppError
+// where
+//     E: Into<String>,
+// {
+//     fn from(err: E) -> Self {
+//         Self {
+//             message: err.into(),
+//         }
+//     }
+// }
+
+impl From<ServerFnError> for AppError {
+    fn from(err: ServerFnError) -> Self {
         Self {
-            message: err.into(),
+            message: format!("{:?}", err),
         }
     }
 }
+
+impl From<String> for AppError {
+    fn from(err: String) -> Self { Self { message: err } }
+}
+

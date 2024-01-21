@@ -1,9 +1,23 @@
 use leptos::ServerFnError;
 
-#[leptos::server(OAuthLink, "/api", "Url", "generate_oauth_link")]
-pub async fn oauth_link() -> Result<String, ServerFnError> { backend::oauth_link().await }
-pub async fn oauth_check(ouath_state: String, oauth_code: String) -> Result<String, ServerFnError> {
-    backend::oauth_check(ouath_state, oauth_code).await
+// This guy generates an OAuth link by making a PkceCodeChallenge and storing it in the database
+// then generating a link to your OAuth provider (currently only one is supported, it would be
+// easy to expand it to multiple providers)
+//
+// Make this server function GetJSON so that it listens to GET requests, not POST as we directly
+// visit this endpoint in the browser.
+#[leptos::server(OAuthRedirect, "/api", "GetJson", "oauth_redirect")]
+pub async fn redirect() -> Result<String, ServerFnError> { backend::redirect().await }
+
+// Once the login is completed the OAuth provider will navigate us to this return page.
+// with a csrf token in the 'state' and an authorization code. We use the authorization code
+// to query the oauth provider to get OpenID identity information like email address and name.
+//
+// We create 'person' if one doesn't exist, then generate a session token and pop it in the
+// database.
+#[leptos::server(OAuthCheck, "/api", "Url", "oauth_check")]
+pub async fn check(ouath_state: String, oauth_code: String) -> Result<String, ServerFnError> {
+    backend::check(ouath_state, oauth_code).await
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -87,12 +101,12 @@ mod backend {
         }
     }
 
-    pub async fn oauth_link() -> Result<String, ServerFnError> {
+    pub async fn redirect() -> Result<(String), ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoServerState)?;
         let hostname = use_context::<Host>().ok_or(Fail::NoHostname)?.0;
 
-        let cfg = first_oauth_config(&app_state)?;
-        let client = build_oauth_client(&cfg, hostname);
+        let cfg = first_config(&app_state)?;
+        let client = client(&cfg, hostname);
 
         let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -113,10 +127,11 @@ mod backend {
             .map_err(|e| Fail::DbError(e))?
             .ok_or(Fail::NotCreated)?;
 
-        Ok(authorize_url.to_string())
+        leptos_axum_bodge::redirect(authorize_url.to_string().as_ref());
+        Ok("redirecting!".to_string())
     }
 
-    pub async fn oauth_check(state: String, code: String) -> Result<String, ServerFnError> {
+    pub async fn check(state: String, code: String) -> Result<String, ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoServerState)?;
         let hostname = use_context::<Host>().ok_or(Fail::NoHostname)?.0;
 
@@ -130,8 +145,8 @@ mod backend {
             .map_err(|e| Fail::DbError(e))?
             .ok_or(Fail::UnknownCsrfId)?;
 
-        let cfg = first_oauth_config(&app_state)?;
-        let client = build_oauth_client(&cfg, hostname);
+        let cfg = first_config(&app_state)?;
+        let client = client(&cfg, hostname);
 
         let token_response = client
             .exchange_code(code)
@@ -183,12 +198,12 @@ mod backend {
                 .ok_or(Fail::UserNotCreated)?,
         };
 
-        // // Create the session
-        let session = create_session(app_state.db, person.id.id.to_string()).await?;
+        // Create the session
+        let session = create_session(person.id.into()).await?;
         Ok(session)
     }
 
-    fn build_oauth_client(cfg: &config::OAuthProvider, hostname: String) -> BasicClient {
+    fn client(cfg: &config::OAuthProvider, hostname: String) -> BasicClient {
         let scheme = if hostname.starts_with("localhost") {
             "http"
         } else {
@@ -204,7 +219,7 @@ mod backend {
         .set_redirect_uri(RedirectUrl::new(redirect_url).unwrap())
     }
 
-    fn first_oauth_config(state: &AppState) -> Result<config::OAuthProvider, Fail> {
+    fn first_config(state: &AppState) -> Result<config::OAuthProvider, Fail> {
         state
             .config
             .login

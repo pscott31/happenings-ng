@@ -1,72 +1,59 @@
 
 [workspace]
- members = ["frontend", "common", "happenings", "happenings_macro"]
- resolver = "2"
+members = [
+    "happenings_frontend",
+    "common",
+    "happenings_backend",
+    "happenings_macro",
+    "happenings_lib",
+    "leptos_axum_bodge",
+]
+resolver = "2"
 
-[[bin]]
- name = "happenings"
- path = "src/main.rs"
+[workspace.dependencies]
+happenings_lib = { path = "happenings_lib" }
+leptos_axum_bodge = { path = "leptos_axum_bodge" }
+anyhow = "1.0.75"
+oauth2 = "4.4.2"
+chrono = { version = "0.4.31", features = ["serde"] }
+# surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
+surrealdb = { version = "1.0.0" }
+axum = "0.7.2"
+serde = { version = "1.0.193", features = ["derive"] }
+common = { path = "common" }
+reqwest = { version = "0.11.22", default-features = false, features = [
+    "rustls-tls",
+    "cookies",
+    "trust-dns",
+    "json",
+] }
+rand = "0.8.5"
+sha256 = "1.4.0"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+dotenv = "0.15.0"
+figment = { version = "0.10.12", features = ["toml", "env"] }
+tokio = { version = "1.34.0", features = ["full", "macros", "rt-multi-thread"] }
+hyper = "1.0.1"
+tower = "0.4.13"
+mime_guess = "2.0.4"
+leptos = "0.5.4"
+tokio-util = "0.7.10"
+axum-macros = "0.4.0"
+hyper-util = { version = "0.1.1", features = ["server-auto", "tokio", "http1"] }
+once_cell = "1.19.0"
+scopeguard = "1.2.0"
+derive_builder = "0.12.0"
+axum-extra = { version = "0.9.1", features = ["cookie"] }
+tracing = "0.1.40"
+rust-embed = "8.2.0"
+leptos_axum = "0.5.7"
+parking_lot = "0.12.1"
+wasm-bindgen-cli-support = "0.2.89"
+axum-test = "14.0.0"
 
-[package]
- name = "happenings-bin"
- version = "0.1.0"
- edition = "2021"
-
-[dependencies]
- happenings = { path = "happenings" }
- anyhow = "1.0.75"
- oauth2 = "4.4.2"
- chrono = { version = "0.4.31", features = ["serde"] }
- # surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
- surrealdb = { version = "1.0.0" }
- axum = "0.7.2"
- serde = { version = "1.0.193", features = ["derive"] }
- common = { path = "common" }
- reqwest = { version = "0.11.22", default-features = false, features = [
-  "rustls-tls",
-  "cookies",
-  "trust-dns",
-  "json",
- ] }
- rand = "0.8.5"
- sha256 = "1.4.0"
- tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
- dotenv = "0.15.0"
- figment = { version = "0.10.12", features = ["toml", "env"] }
- tokio = { version = "1.34.0", features = [
-  "full",
-  "macros",
-  "rt-multi-thread",
- ] }
- hyper = "1.0.1"
- tower = "0.4.13"
- mime_guess = "2.0.4"
- leptos = "0.5.4"
- tokio-util = "0.7.10"
- axum-macros = "0.4.0"
- hyper-util = { version = "0.1.1", features = [
-  "server-auto",
-  "tokio",
-  "http1",
- ] }
- once_cell = "1.19.0"
- scopeguard = "1.2.0"
- derive_builder = "0.12.0"
- axum-extra = { version = "0.9.1", features = ["cookie"] }
- tracing = "0.1.40"
- rust-embed = "8.2.0"
-
-
-[build-dependencies]
- anyhow = "1.0.75"
- wasm-bindgen-cli-support = "0.2.89"
-
-[dev-dependencies]
- axum-test = "14.0.0"
-
-# TODO - just for wasm?
-[profile.release]
- #  inherits = "release"
- opt-level = 'z'
- lto = true
- codegen-units = 1
+# # TODO - just for wasm?
+# [profile.release]
+# #  inherits = "release"
+# opt-level = 'z'
+# lto = true
+# codegen-units = 1

@@ -17,13 +17,13 @@ export HAPPENINGS_WASM := absolute_path(bindgen_out_dir + "/frontend_bg.wasm")
 export HAPPENINGS_JS := absolute_path(bindgen_out_dir + "/frontend.js")
 
 build-frontend:
-    cargo build -p frontend {{cargo_flags}} --target=wasm32-unknown-unknown --target-dir {{frontend_target_dir}}
+    cargo build -p happenings_frontend {{cargo_flags}} --target=wasm32-unknown-unknown --target-dir {{frontend_target_dir}}
     wasm-bindgen {{wasm_out_dir}}/frontend.wasm --web {{bindgen_flags}} --out-dir {{bindgen_out_dir}} 
 
 build-backend:
     echo ${HAPPENINGS_JS}
     echo ${HAPPENINGS_WASM}
-    cargo build {{cargo_flags}}
+    cargo build happenings_backend {{cargo_flags}}
 
 build: build-frontend build-backend
 

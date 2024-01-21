@@ -1,0 +1,54 @@
+
+[[bin]]
+name = "happenings"
+path = "src/main.rs"
+
+[package]
+name = "happenings_backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+hyper-util = { workspace = true, features = ["server-auto", "tokio", "http1"] }
+tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+hyper = { workspace = true }
+figment = { workspace = true, features = ["toml", "env"] }
+tower = { workspace = true }
+mime_guess = { workspace = true }
+leptos = { workspace = true }
+tokio-util = { workspace = true }
+axum-macros = { workspace = true }
+once_cell = { workspace = true }
+scopeguard = { workspace = true }
+derive_builder = { workspace = true }
+axum-extra = { workspace = true, features = ["cookie"] }
+tracing = { workspace = true }
+rust-embed = { workspace = true }
+# leptos_axum = { workspace = true }
+parking_lot = { workspace = true }
+surrealdb = { workspace = true } #features = ["kv-mem", "kv-rocksdb"]
+serde = { workspace = true, features = ["derive"] }
+reqwest = { workspace = true, default-features = false, features = [
+    "rustls-tls",
+    "cookies",
+    "trust-dns",
+    "json",
+] }
+rand = { workspace = true }
+sha256 = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+dotenv = { workspace = true }
+anyhow = { workspace = true }
+oauth2 = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+common = { workspace = true }
+happenings_lib = { workspace = true }
+
+
+[build-dependencies]
+anyhow = "1.0.75"
+wasm-bindgen-cli-support = "0.2.89"
+
+[dev-dependencies]
+axum-test = { workspace = true }

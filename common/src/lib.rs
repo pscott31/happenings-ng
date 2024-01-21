@@ -78,5 +78,3 @@ pub struct OAuthReturn {
     pub code: String,
 }
 
-
-

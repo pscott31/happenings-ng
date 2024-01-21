@@ -71,19 +71,33 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
     Ok(db)
 }
 
+struct LoggedInUser(Person);
+
+#[async_trait]
+impl FromRequestParts<State> for LoggedInUser
+where
+    S: Send + Sync,
+    Self: Sized,
+{
+    type Rejection = String;
+    async fn from_request_parts(parts: &mut Parts, state: State) -> Result<Self, Self::Rejection> {
+        if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
+            if let Ok(person) = happenings::person::get_person(session.user.into()).await {
+                return person;
+            }
+        }
+    }
+}
+
 fn build_app(db: Surreal<Any>, config: Config) -> Router {
     Router::new()
         .route("/", get(root_handler))
         .route("/app.wasm", get(wasm_handler))
         .route("/app.js", get(js_handler))
         .route("/static/*path", get(static_handler))
-        .route("/api/auth/oauth/link", post(auth::oauth::login_handler))
-        .route("/api/auth/password/signin", post(auth::password::signin))
-        .route("/api/auth/password/signup", post(auth::password::signup))
-        .route("/api/user_exists", post(user_exists_handler))
         .route("/api/user", post(user_handler)) // TODO: rename current_user?
-        .route("/api/auth/oauth/return", post(auth::oauth::oauth_return))
         .route("/api/*fn_name", post(server_fns::handle_server_fns))
+        .route("/api/*fn_name", get(server_fns::handle_server_fns))
         .fallback(get(root_handler))
         .with_state(happenings::AppState { db, config })
 }
@@ -122,19 +136,6 @@ async fn user_handler(
     };
 
     Ok(Json(resp))
-}
-
-async fn user_exists_handler(
-    State(app_state): State<AppState>,
-    query: Json<common::Email>,
-) -> Result<impl IntoResponse, AppError> {
-    let people: Vec<db::Person> = app_state
-        .db
-        .query("SELECT * FROM person where email=$email;")
-        .bind(("email", &query.0.email))
-        .await?
-        .take(0)?;
-    Ok(Json(!people.is_empty()))
 }
 
 async fn root_handler() -> impl IntoResponse {

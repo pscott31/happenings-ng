@@ -1,0 +1,21 @@
+[lib]
+crate-type = ["cdylib"]
+
+[package]
+name = "leptos_axum_bodge"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum-macros = { workspace = true }
+axum-extra = { workspace = true, features = ["cookie"] }
+axum = { workspace = true }
+leptos = { workspace = true }
+parking_lot = { workspace = true }
+tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+tokio-util = { workspace = true }
+once_cell = { workspace = true }
+scopeguard = { workspace = true }
+# happenings_lib = { workspace = true }

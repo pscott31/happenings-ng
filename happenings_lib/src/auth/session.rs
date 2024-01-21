@@ -1,10 +1,16 @@
+cfg_if::cfg_if! {
+    if #[cfg(not(target_arch = "wasm32"))] {
+
 use chrono::Duration;
 use chrono::{DateTime, Utc};
+use leptos::use_context;
 use leptos::ServerFnError::{self, ServerError};
 use serde::{Deserialize, Serialize};
 use std::ops::Add;
 use surrealdb::sql::Thing;
-use surrealdb::{engine::any::Any, Surreal};
+use crate::AppState;
+use crate::person::PersonId;
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NewDbSession {
@@ -13,6 +19,7 @@ pub struct NewDbSession {
 }
 
 pub enum Fail {
+    NoAppState,
     DbError(surrealdb::Error),
     NotCreated,
 }
@@ -20,6 +27,7 @@ pub enum Fail {
 impl From<Fail> for ServerFnError {
     fn from(fail: Fail) -> Self {
         let msg = match fail {
+            Fail::NoAppState => format!("no app state in context"),
             Fail::DbError(e) => format!("database error: {:?}", e),
             Fail::NotCreated => format!("session not created"),
         };
@@ -27,15 +35,15 @@ impl From<Fail> for ServerFnError {
     }
 }
 
-pub async fn create_session(db: Surreal<Any>, person_id: String) -> Result<String, Fail> {
-    let session_record: crate::db::Record = db
+pub async fn create_session(person_id: PersonId) -> Result<String, Fail> {
+    let app_state = use_context::<AppState>().ok_or(Fail::NoAppState)?;
+
+    let session_record: crate::db::Record = app_state
+        .db
         .create("session")
         .content(NewDbSession {
             expires_at: chrono::Utc::now().add(Duration::days(1)),
-            user: Thing {
-                tb: "person".into(),
-                id: person_id.into(),
-            },
+            user: person_id.into(),
         })
         .await
         .map_err(|e| Fail::DbError(e))?
@@ -44,4 +52,6 @@ pub async fn create_session(db: Surreal<Any>, person_id: String) -> Result<Strin
 
     Ok(session_record.id.id.to_string())
 }
+
+    }}
 
