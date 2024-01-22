@@ -12,6 +12,10 @@ impl<T> ReactiveList<T> {
     pub fn iter(&self) -> impl Iterator<Item = (&Uuid, &RwSignal<T>)> + '_ { self.0.iter() }
 }
 
+impl<T> Default for ReactiveList<T> {
+    fn default() -> Self { Self::new() }
+}
+
 impl<T> From<ReactiveList<T>> for Vec<T>
 where
     T: Clone,

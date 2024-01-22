@@ -68,7 +68,7 @@ pub async fn handle_server_fns<AS: Clone + Send + 'static, F>(
     additional_context: F,
 ) -> impl IntoResponse
 where
-    F: Fn() -> () + Send + 'static,
+    F: Fn() + Send + 'static,
 {
     let fn_name = fn_name
         .strip_prefix('/')
@@ -101,7 +101,7 @@ where
         let payload = server_fn
             .call((), data.as_ref())
             .await
-            .map_err(|e| Fail::ServerFnError(e))?;
+            .map_err(Fail::ServerFnError)?;
 
         let mut res = Response::builder();
         res = res.status(StatusCode::OK);
@@ -144,13 +144,11 @@ where
 
     let payload_result = get_task_pool().spawn_pinned(task).await;
 
-    let resp = match payload_result {
+    match payload_result {
         Err(e) => Fail::JoinError(e).into_response(),
         Ok(Err(e)) => e.into_response(),
         Ok(Ok(resp)) => resp,
-    };
-
-    resp
+    }
 }
 
 /// Allows you to override details of the HTTP response like the status code and add Headers/Cookies.

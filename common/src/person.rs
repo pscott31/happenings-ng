@@ -91,7 +91,7 @@ mod backend {
             .map_err(|_| ServerError("db query failed".to_string()))?
             .ok_or(ServerError(format!("no person {} found", id).to_string()))?;
 
-        return Ok(person.into());
+        Ok(person.into())
     }
 
     pub async fn get_logged_in() -> Result<Person, leptos::ServerFnError> {

@@ -40,7 +40,7 @@ mod backend {
     impl From<Fail> for ServerFnError {
         fn from(fail: Fail) -> Self {
             let msg = match fail {
-                Fail::NoServerState => format!("no server state"),
+                Fail::NoServerState => "no server state".to_string(),
                 Fail::DbError(e) => format!("database error: {:?}", e),
                 Fail::NoUser(email) => {
                     format!("user with email {} does not exist in database", email)
@@ -49,7 +49,7 @@ mod backend {
                     "user with email {} exists, but associated with oauth login",
                     email
                 ),
-                Fail::UserCreateFailed => format!("user not created in db"),
+                Fail::UserCreateFailed => "user not created in db".to_string(),
                 Fail::IncorrectPassword(email) => {
                     format!("incorrect password for account with email {}", email)
                 }
@@ -75,15 +75,15 @@ mod backend {
             .db
             .create("person")
             .content(db::NewPerson {
-                given_name: given_name,
-                family_name: family_name,
+                given_name,
+                family_name,
                 picture: None,
-                email: email,
-                phone: phone,
+                email,
+                phone,
                 credentials: db::Credentials::Password { hash, salt },
             })
             .await
-            .map_err(|e| Fail::DbError(e))?
+            .map_err(Fail::DbError)?
             .pop()
             .ok_or(Fail::UserCreateFailed)?;
         Ok(())
@@ -97,7 +97,7 @@ mod backend {
             .query("select * from person where email=$email")
             .bind(("email", &email))
             .await
-            .map_err(|e| Fail::DbError(e))?
+            .map_err(Fail::DbError)?
             .take(0)?;
 
         let person = people.pop().ok_or(Fail::NoUser(email.clone()))?;

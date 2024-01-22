@@ -174,7 +174,8 @@ async fn root_handler() -> impl IntoResponse {
 async fn wasm_handler() -> impl IntoResponse {
     // In debug mode, read the file at runtime
     #[cfg(debug_assertions)]
-    let content = std::fs::read(env!("HAPPENINGS_WASM")).expect("Failed to read file");
+    let content =
+        std::fs::read(option_env!("HAPPENINGS_WASM").unwrap()).expect("Failed to read file");
 
     // In release mode, embed the file at compile time
     #[cfg(not(debug_assertions))]
@@ -186,7 +187,8 @@ async fn wasm_handler() -> impl IntoResponse {
 async fn js_handler() -> impl IntoResponse {
     // In debug mode, read the file at runtime
     #[cfg(debug_assertions)]
-    let content = std::fs::read(env!("HAPPENINGS_JS")).expect("Failed to read file");
+    let content =
+        std::fs::read(option_env!("HAPPENINGS_JS").unwrap()).expect("Failed to read file");
 
     // In release mode, embed the file at compile time
     #[cfg(not(debug_assertions))]

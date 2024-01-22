@@ -183,11 +183,7 @@ fn struct_fields_without_attr(input: &syn::DeriveInput) -> Vec<syn::Field> {
                 .map(|f| {
                     // Create a field without the #[not_in_new] attribute
                     let mut field = f.clone();
-                    field.attrs = field
-                        .attrs
-                        .into_iter()
-                        .filter(|attr| !attr.path.is_ident("not_in_new"))
-                        .collect();
+                    field.attrs.retain(|attr| !attr.path.is_ident("not_in_new"));
                     field
                 })
                 .collect::<Vec<_>>(),

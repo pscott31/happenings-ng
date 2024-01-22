@@ -73,16 +73,16 @@ mod backend {
     impl From<Fail> for ServerFnError {
         fn from(fail: Fail) -> Self {
             let msg = match fail {
-                Fail::NoServerState => format!("no server state"),
-                Fail::NoHostname => format!("no hostname"),
+                Fail::NoServerState => "no server state".to_string(),
+                Fail::NoHostname => "no hostname".to_string(),
                 Fail::DbError(e) => format!("database error: {:?}", e),
-                Fail::NotCreated => format!("oauth state record not created"),
-                Fail::NoProviders => format!("no oauth providers configured"),
-                Fail::UnknownCsrfId => format!("unknown oauth csrf id"),
+                Fail::NotCreated => "oauth state record not created".to_string(),
+                Fail::NoProviders => "no oauth providers configured".to_string(),
+                Fail::UnknownCsrfId => "unknown oauth csrf id".to_string(),
                 Fail::UserInfoQueryError(e) => format!("failed to query userinfo {:?}", e),
                 Fail::UserInfoParseError(e) => format!("failed to query userinfo {:?}", e),
                 Fail::UserEmailNotVerified(e) => format!("email address not verified : {:?}", e),
-                Fail::UserNotCreated => format!("failed to create new user"),
+                Fail::UserNotCreated => "failed to create new user".to_string(),
             };
             ServerError(msg)
         }
@@ -111,7 +111,7 @@ mod backend {
                 return_url: "/".to_string(),
             })
             .await
-            .map_err(|e| Fail::DbError(e))?
+            .map_err(Fail::DbError)?
             .ok_or(Fail::NotCreated)?;
 
         leptos_axum_hack::redirect(authorize_url.to_string().as_ref());
@@ -129,7 +129,7 @@ mod backend {
             .db
             .delete(("oauth2_state", state.secret()))
             .await
-            .map_err(|e| Fail::DbError(e));
+            .map_err(Fail::DbError);
         warn!("oauth state: {:?}", &oauth_state);
         let oauth_state = oauth_state?;
 
@@ -150,10 +150,10 @@ mod backend {
             "https://www.googleapis.com/oauth2/v3/userinfo?oauth_token=".to_owned() + access_token;
         let user_info = reqwest::get(url)
             .await
-            .map_err(|e| Fail::UserInfoQueryError(e))?
+            .map_err(Fail::UserInfoQueryError)?
             .json::<OpenIDUserInfo>()
             .await
-            .map_err(|e| Fail::UserInfoParseError(e))?;
+            .map_err(Fail::UserInfoParseError)?;
         dbg!(&user_info);
 
         if !user_info.email_verified {

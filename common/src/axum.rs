@@ -64,7 +64,7 @@ where
         .db
         .select(&session.user)
         .await
-        .map_err(|e| Fail::DbError(e))?
+        .map_err(Fail::DbError)?
         .ok_or(Fail::NoUser)?;
 
         Ok(LoggedInUser(person.into()))
@@ -91,7 +91,7 @@ where
             .db
             .select(session_id)
             .await
-            .map_err(|e| Fail::DbError(e))?
+            .map_err(Fail::DbError)?
             .ok_or(Fail::NoSession)?;
 
         if chrono::Utc::now() > session.expires_at {

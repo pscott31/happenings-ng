@@ -159,7 +159,7 @@ mod backend {
         fn from(f: Fail) -> Self {
             let msg = match f {
                 Fail::NoState => "app state not found".to_string(),
-                Fail::DBError(e) => format!("database error: {}", e.to_string()),
+                Fail::DBError(e) => format!("database error: {}", e),
                 Fail::NotFound(id) => format!("no record with id '{}'", id),
                 Fail::SquareAPI(e) => format!("square api call failed: '{}'", e),
                 Fail::NoSquareOrder => "no square order associated with booking".to_string(),
@@ -182,9 +182,9 @@ mod backend {
             )
             .bind(("id", Thing::from(&booking_id)))
             .await
-            .map_err(|e| Fail::DBError(e))?
+            .map_err(Fail::DBError)?
             .take(0)
-            .map_err(|e| Fail::DBError(e))?;
+            .map_err(Fail::DBError)?;
 
         let booking = bookings.pop().ok_or(Fail::NotFound(booking_id.into()))?;
         Ok(booking.into())
@@ -198,9 +198,9 @@ mod backend {
             .query("select contact_id AS contact, event_id AS event, * from booking where event_id=$event_id and status != 'Draft' FETCH contact, event")
             .bind(("event_id", Thing::from(&event_id)))
             .await
-            .map_err(|e| Fail::DBError(e))?
+            .map_err(Fail::DBError)?
             .take(0)
-            .map_err(|e| Fail::DBError(e))?;
+            .map_err(Fail::DBError)?;
 
         Ok(bookings.into_iter().map(|booking| booking.into()).collect())
     }
@@ -218,7 +218,7 @@ mod backend {
         let b = NewDbBooking {
             contact_id: contact.into(),
             event_id: event.into(),
-            tickets: tickets,
+            tickets,
             status: Status::Draft,
             payments: Vec::new(),
             square_order: None,
@@ -229,7 +229,7 @@ mod backend {
             .create("booking")
             .content(b)
             .await
-            .map_err(|e| ServerError(format!("failed to create new booking: {}", e.to_string())))?;
+            .map_err(|e| ServerError(format!("failed to create new booking: {}", e)))?;
 
         let b = bs
             .pop()
@@ -317,7 +317,7 @@ mod backend {
                 parsed_res.payment_link.order_id,
             ))
             .await
-            .map_err(|e| Fail::DBError(e))?
+            .map_err(Fail::DBError)?
             .ok_or(Fail::NotFound(booking_id.into()))?;
 
         Ok(parsed_res.payment_link.long_url)
@@ -373,7 +373,7 @@ mod backend {
             .patch(PatchOp::replace("/payments", payments))
             .patch(PatchOp::replace("/status", status))
             .await
-            .map_err(|e| Fail::DBError(e))?
+            .map_err(Fail::DBError)?
             .ok_or(Fail::NotFound(booking.id.into()))?;
 
         get(booking_id.clone()).await

@@ -59,9 +59,9 @@ pub enum Fail {
 impl From<Fail> for ServerFnError {
     fn from(fail: Fail) -> Self {
         let msg = match fail {
-            Fail::NoAppState => format!("no app state in context"),
+            Fail::NoAppState => "no app state in context".to_string(),
             Fail::DbError(e) => format!("database error: {:?}", e),
-            Fail::NotCreated => format!("session not created"),
+            Fail::NotCreated => "session not created".to_string(),
         };
         ServerError(msg)
     }
@@ -78,7 +78,7 @@ pub async fn create_session(person_id: PersonId) -> Result<String, Fail> {
             user: person_id.into(),
         })
         .await
-        .map_err(|e| Fail::DbError(e))?
+        .map_err(Fail::DbError)?
         .pop()
         .ok_or(Fail::NotCreated)?;
 

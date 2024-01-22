@@ -104,12 +104,12 @@ trait JsonError {
 
 impl JsonError for reqwest::Response {
     async fn json_error_for_status(self) -> Result<Self, String> {
-        if let Err(_) = self.error_for_status_ref() {
+        if self.error_for_status_ref().is_err() {
             let resp = self
                 .json::<ErrorResponse>()
                 .await
                 .map_err(|e| e.to_string())?;
-            return Err(resp.message.into());
+            return Err(resp.message);
         }
         Ok(self)
     }
@@ -157,7 +157,7 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
     let submit = create_action(move |new_user: &NewUser| {
         let new_user = new_user.clone();
         async move {
-            let res = common::auth::password::signup_password(
+            let _res = common::auth::password::signup_password(
                 new_user.email.clone(),
                 new_user.password.clone(),
                 new_user.given_name,
@@ -167,7 +167,8 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
             .await; //todo - check resut
 
             match common::auth::password::signin(new_user.email, new_user.password).await {
-                Err(e) => {}
+                // todo handle error
+                Err(_e) => {}
                 Ok(session_id) => {
                     set_session_id(SessionID::Set(session_id));
                     sign_in_signal.set(SignInStatus::NotVisible);
@@ -195,7 +196,7 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
                   email: email(),
                   given_name: given_name(),
                   family_name: family_name(),
-                  phone: if phone() != "" { Some(phone()) } else { None },
+                  phone: if !phone().is_empty() { Some(phone()) } else { None },
                   password: password1(),
               })
       }>
@@ -375,9 +376,7 @@ pub fn OAuthReturn() -> impl IntoView {
         };
 
         match check(p.state, p.code).await {
-            Err(e) => {
-                return Err(format!("oauth check failed: {:?}", e));
-            }
+            Err(e) => Err(format!("oauth check failed: {:?}", e)),
             Ok(session_id) => {
                 set_session_id(SessionID::Set(session_id));
                 close_popup();
@@ -406,8 +405,8 @@ where
 {
     let popup = window()
         .open_with_url_and_target_and_features(url, "popup", "popup")
-        .map_err(|_| format!("failed to open popup window"))?
-        .ok_or(format!("failed to open popup window"))?;
+        .map_err(|_| "failed to open popup window".to_string())?
+        .ok_or("failed to open popup window".to_string())?;
 
     // TODO: How do we remove this once we're done?
     let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
