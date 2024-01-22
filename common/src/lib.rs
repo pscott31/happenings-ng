@@ -1,80 +1,51 @@
-use serde::{Deserialize, Serialize};
-use url::Url;
+pub mod auth;
+pub mod booking;
+pub mod config;
+pub mod error_handling;
+pub mod event;
+pub mod generic_id;
+pub mod person;
+pub mod square_api;
+pub mod ticket;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginResponse {
-    pub url: Url,
+cfg_if::cfg_if! {
+if #[cfg(not(target_arch = "wasm32"))] {
+    pub mod axum;
+    pub mod db;
+    // use leptos::use_context;
+    // use leptos::ServerFnError::ServerError;
+    use surrealdb::{engine::any::Any, Surreal};
+    use config::Config;
+}}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone)]
+pub struct AppState {
+    pub config: Config,
+    pub db: Surreal<Any>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OAuthReturnResponse {
-    pub session_id: String,
-    pub user_id: String,
-    pub given_name: String,
-    pub family_name: String,
-    pub email: String,
-}
+// #[leptos::server(HelloWorld, "/api", "Url", "hello")]
+// pub async fn list_users() -> Result<Vec<common::User>, leptos::ServerFnError> {
+//     let app_state = use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ErrorResponse {
-    pub message: String,
-}
+//     let people: Vec<db::Person> = app_state
+//         .db
+//         .query("SELECT * FROM person;")
+//         .await
+//         .map_err(|_| ServerError("db query failed".to_string()))?
+//         .take(0)?;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[allow(dead_code)]
-pub struct UserInfoReponse {
-    pub id: String,
-    pub given_name: String,
-    pub family_name: String,
-    pub picture: String,
-    pub email: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct NewUser {
-    pub given_name: String,
-    pub family_name: String,
-    // pub picture: String,
-    pub email: String,
-    pub password: String,
-    pub phone: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct User {
-    pub id: String,
-    pub given_name: String,
-    pub family_name: String,
-    // pub picture: String,
-    pub email: String,
-    pub phone: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub enum CreateUserResponse {
-    Error(ErrorResponse),
-    Ok(),
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct EmailPassword {
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Session {
-    pub id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct Email {
-    pub email: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OAuthReturn {
-    pub state: String,
-    pub code: String,
-}
+//     let users = people
+//         .into_iter()
+//         .map(|x| common::User {
+//             id: x.id.to_string(),
+//             given_name: x.given_name,
+//             family_name: x.family_name,
+//             email: x.email,
+//             phone: x.phone,
+//         })
+//         .collect();
+//     return Ok(users);
+// }
 

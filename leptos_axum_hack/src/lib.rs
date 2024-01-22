@@ -1,13 +1,9 @@
-use axum::async_trait;
-// use crate::{db, AppState};
 use axum::body::{Body, Bytes};
-use axum::extract::{FromRequest, FromRequestParts, Host, Path, RawQuery, Request, State};
-use axum::handler::Handler;
+use axum::extract::{Path, RawQuery, Request, State};
+
 use axum::http::{header, HeaderMap};
 use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum_extra::extract::CookieJar;
-// use happings_lib::db::Session;
 use leptos::leptos_server::server_fn_by_path;
 use leptos::server_fn::{Encoding, Payload};
 use leptos::{create_runtime, provide_context, use_context, ServerFnError};
@@ -64,37 +60,16 @@ impl IntoResponse for Fail {
     }
 }
 
-pub struct GenericExtractor<T>(T);
-
-// #[async_trait]
-// impl<S> FromRequest<S> for ExtraContext<F>
-// where
-//     S: Send + Sync,
-//     Self: Sized,
-// {
-//     async fn from_request(req: &mut Request, state: &S) {
-//         || {
-//             if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-//                 if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
-//                     provide_context(person);
-//                 }
-//             }
-//         }
-//     }
-
-//     type Rejection = String;
-// }
-
-// fn wibble() -> impl Handler {}
-pub async fn handle_server_fns<AS: Clone + Send + 'static>(
+pub async fn handle_server_fns<AS: Clone + Send + 'static, F>(
     Path(fn_name): Path<String>,
-    // headers: HeaderMap,
     RawQuery(query): RawQuery,
     State(app_state): State<AS>,
-    // host: Host,
-    // jar: CookieJar,
     req: Request<Body>,
-) -> impl IntoResponse {
+    additional_context: F,
+) -> impl IntoResponse
+where
+    F: Fn() -> () + Send + 'static,
+{
     let fn_name = fn_name
         .strip_prefix('/')
         .map(|fn_name| fn_name.to_string())
@@ -106,15 +81,9 @@ pub async fn handle_server_fns<AS: Clone + Send + 'static>(
         defer! {
             runtime.dispose();
         }
+        additional_context();
         provide_context(app_state.clone());
-        // provide_context(host);
         provide_context(ResponseOptions::default());
-        // todo put back
-        // if let Ok(session) = get_session(&app_state, /*headers,*/ jar).await {
-        //     if let Ok(person) = happenings_lib::person::get_person(session.user.into()).await {
-        //         provide_context(person);
-        //     }
-        // }
 
         let server_fn = server_fn_by_path(fn_name.as_str()).ok_or(Fail::BadServerPath(fn_name))?;
 
@@ -157,19 +126,18 @@ pub async fn handle_server_fns<AS: Clone + Send + 'static>(
             header_ref.extend(res_headers.drain());
         };
 
-        let res =
-            match payload {
-                Payload::Binary(data) => res
-                    .header("Content-Type", "application/cbor")
-                    .body(Body::from(data)),
-                Payload::Url(data) => res
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .body(Body::from(data)),
-                Payload::Json(data) => res
-                    .header("Content-Type", "application/json")
-                    .body(Body::from(data)),
-            }
-            .expect("could not build response");
+        let res = match payload {
+            Payload::Binary(data) => res
+                .header("Content-Type", "application/cbor")
+                .body(Body::from(data)),
+            Payload::Url(data) => res
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(Body::from(data)),
+            Payload::Json(data) => res
+                .header("Content-Type", "application/json")
+                .body(Body::from(data)),
+        }
+        .expect("could not build response");
         // Ok::<hyper::Response<axum::body::Body>, E>((res)
         Result::<Response<Body>, Fail>::Ok(res)
     };
@@ -183,8 +151,6 @@ pub async fn handle_server_fns<AS: Clone + Send + 'static>(
     };
 
     resp
-    // .map_err(|e| );
-    // .and_then(std::convert::identity);
 }
 
 /// Allows you to override details of the HTTP response like the status code and add Headers/Cookies.

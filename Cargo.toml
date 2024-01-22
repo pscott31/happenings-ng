@@ -1,71 +1,72 @@
 
 [workspace]
-members = [
-    "happenings_frontend",
-    "common",
-    "happenings_backend",
-    "happenings_macro",
-    "happenings_lib",
-    "leptos_axum_hack",
-]
-resolver = "2"
+ members = ["frontend", "common", "backend", "macros", "leptos_axum_hack"]
+ resolver = "2"
 
-[workspace.dependencies]
-anyhow = "1.0.75"
-axum = "0.7.2"
-axum-extra = { version = "0.9.1", features = ["cookie"] }
-axum-macros = "0.4.0"
-axum-test = "14.0.0"
-cfg-if = "1.0.0"
-chrono = { version = "0.4.31", features = ["serde"] }
-common = { path = "common" }
-derive_builder = "0.12.0"
-dotenv = "0.15.0"
-figment = { version = "0.10.12", features = ["toml", "env"] }
-futures = "0.3.30"
-futures-util = "0.3.30"
-happenings_lib = { path = "happenings_lib" }
-happenings_macro = { path = "happenings_macro" }
-hyper = "1.0.1"
-hyper-util = { version = "0.1.1", features = ["server-auto", "tokio", "http1"] }
-indexmap = "2.1.0"
-leptos = "0.5.4"
-leptos_axum = "0.5.7"
-leptos_axum_hack = { path = "leptos_axum_hack" }
-mime_guess = "2.0.4"
-oauth2 = "4.4.2"
-once_cell = "1.19.0"
-parking_lot = "0.12.1"
-phonenumber = "0.3.3"
-rand = "0.8.5"
-reqwest = { version = "0.11.22", default-features = false, features = [
-    "rustls-tls",
-    "cookies",
-    "trust-dns",
-    "json",
-] }
-rust_decimal = "1.33.1"
-rust_decimal_macros = "1.33.1"
-rust-embed = "8.2.0"
-sanitizer = "0.1.6"
-scopeguard = "1.2.0"
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-serde_qs = "0.12"
-sha256 = "1.4.0"
-surrealdb = { version = "1.0.0" } # surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
-tokio = { version = "1.34.0", features = ["full", "macros", "rt-multi-thread"] }
-tokio-util = "0.7.10"
-tower = "0.4.13"
-tower-http = "0.5.1"
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-uuid = "1.6.1"
-wasm-bindgen-cli-support = "0.2.89"
+ [workspace.dependencies]
+  anyhow = "1.0.75"
+  axum = "0.7.2"
+  axum-extra = { version = "0.9.1", features = ["cookie"] }
+  axum-macros = "0.4.0"
+  axum-test = "14.0.0"
+  cfg-if = "1.0.0"
+  chrono = { version = "0.4.31", features = ["serde"] }
+  common = { path = "common" }
+  derive_builder = "0.12.0"
+  dotenv = "0.15.0"
+  figment = { version = "0.10.12", features = ["toml", "env"] }
+  futures = "0.3.30"
+  futures-util = "0.3.30"
+  lib = { path = "lib" }
+  macros = { path = "macros" }
+  hyper = "1.0.1"
+  hyper-util = { version = "0.1.1", features = [
+   "server-auto",
+   "tokio",
+   "http1",
+  ] }
+  indexmap = "2.1.0"
+  leptos = "0.5.4"
+  leptos_axum = "0.5.7"
+  leptos_axum_hack = { path = "leptos_axum_hack" }
+  mime_guess = "2.0.4"
+  oauth2 = "4.4.2"
+  once_cell = "1.19.0"
+  parking_lot = "0.12.1"
+  phonenumber = "0.3.3"
+  rand = "0.8.5"
+  reqwest = { version = "0.11.22", default-features = false, features = [
+   "rustls-tls",
+   "cookies",
+   "trust-dns",
+   "json",
+  ] }
+  rust_decimal = "1.33.1"
+  rust_decimal_macros = "1.33.1"
+  rust-embed = "8.2.0"
+  sanitizer = "0.1.6"
+  scopeguard = "1.2.0"
+  serde = { version = "1.0.193", features = ["derive"] }
+  serde_json = "1.0.108"
+  serde_qs = "0.12"
+  sha256 = "1.4.0"
+  surrealdb = { version = "1.0.0" } # surrealdb = { version = "1.0.0", features = ["kv-mem", "kv-rocksdb"] }
+  tokio = { version = "1.34.0", features = [
+   "full",
+   "macros",
+   "rt-multi-thread",
+  ] }
+  tokio-util = "0.7.10"
+  tower = "0.4.13"
+  tower-http = "0.5.1"
+  tracing = "0.1.40"
+  tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+  uuid = "1.6.1"
+  wasm-bindgen-cli-support = "0.2.89"
 
-# # TODO - just for wasm?
-# [profile.release]
-# #  inherits = "release"
-# opt-level = 'z'
-# lto = true
-# codegen-units = 1
+  # # TODO - just for wasm?
+  # [profile.release]
+  # #  inherits = "release"
+  # opt-level = 'z'
+  # lto = true
+  # codegen-units = 1

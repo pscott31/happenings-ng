@@ -1,4 +1,4 @@
-happenings_frontend v0.1.0 (/home/scotty/happenings-ng/happenings_frontend)
+frontend v0.1.0 (/home/scotty/happenings-ng/frontend)
 ├── anyhow v1.0.79
 ├── async-trait v0.1.77 (proc-macro)
 │   ├── proc-macro2 v1.0.76
@@ -59,12 +59,12 @@ happenings_frontend v0.1.0 (/home/scotty/happenings-ng/happenings_frontend)
 │       └── wasm-bindgen v0.2.90 (*)
 ├── email_address v0.2.4
 │   └── serde v1.0.195 (*)
-├── happenings_lib v0.1.0 (/home/scotty/happenings-ng/happenings_lib)
+├── lib v0.1.0 (/home/scotty/happenings-ng/lib)
 │   ├── anyhow v1.0.79
 │   ├── cfg-if v1.0.0
 │   ├── chrono v0.4.31 (*)
 │   ├── common v0.1.0 (/home/scotty/happenings-ng/common) (*)
-│   ├── happenings_macro v0.1.0 (proc-macro) (/home/scotty/happenings-ng/happenings_macro)
+│   ├── macro v0.1.0 (proc-macro) (/home/scotty/happenings-ng/macro)
 │   │   ├── proc-macro2 v1.0.76 (*)
 │   │   ├── quote v1.0.35 (*)
 │   │   └── syn v1.0.109

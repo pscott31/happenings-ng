@@ -1,0 +1,53 @@
+
+[[bin]]
+ name = "happenings"
+ path = "src/main.rs"
+
+[package]
+ name = "backend"
+ version = "0.1.0"
+ edition = "2021"
+
+[dependencies]
+ anyhow = { workspace = true }
+ axum = { workspace = true }
+ axum-extra = { workspace = true, features = ["cookie"] }
+ axum-macros = { workspace = true }
+ chrono = { workspace = true, features = ["serde"] }
+ common = { workspace = true }
+ derive_builder = { workspace = true }
+ dotenv = { workspace = true }
+ figment = { workspace = true, features = ["toml", "env"] }
+ hyper = { workspace = true }
+ hyper-util = { workspace = true, features = ["server-auto", "tokio", "http1"] }
+ leptos = { workspace = true }
+ leptos_axum_hack = { workspace = true }
+ mime_guess = { workspace = true }
+ oauth2 = { workspace = true }
+ once_cell = { workspace = true }
+ parking_lot = { workspace = true }
+ rand = { workspace = true }
+ reqwest = { workspace = true, default-features = false, features = [
+  "rustls-tls",
+  "cookies",
+  "trust-dns",
+  "json",
+ ] }
+ rust-embed = { workspace = true }
+ scopeguard = { workspace = true }
+ serde = { workspace = true, features = ["derive"] }
+ sha256 = { workspace = true }
+ surrealdb = { workspace = true } #features = ["kv-mem", "kv-rocksdb"]
+ tokio = { workspace = true, features = ["full", "macros", "rt-multi-thread"] }
+ tokio-util = { workspace = true }
+ tower = { workspace = true }
+ tracing = { workspace = true }
+ tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+
+[build-dependencies]
+ anyhow = "1.0.75"
+ wasm-bindgen-cli-support = "0.2.89"
+
+[dev-dependencies]
+ axum-test = { workspace = true }
