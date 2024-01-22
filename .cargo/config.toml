@@ -1,2 +1,5 @@
 # [unstable]
 #  bindeps = true
+
+[env]
+  HAPPENINGS_WASM = { value = "target_frontend/wasm32-unknown-unknown/debug/bindgen_out/frontend_bg.wasm", relative = true }
