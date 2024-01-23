@@ -7,10 +7,8 @@ use leptos::ServerFnError;
 // Make this server function GetJSON so that it listens to GET requests, not POST as we directly
 // visit this endpoint in the browser.
 #[leptos::server(OAuthRedirect, "/api", "GetJson", "oauth_redirect")]
-pub async fn redirect() -> Result<String, ServerFnError> {
-    let res = backend::redirect().await;
-    res
-}
+#[allow(unused_braces)]
+pub async fn redirect() -> Result<String, ServerFnError> { backend::redirect().await }
 
 // Once the login is completed the OAuth provider will navigate us to this return page.
 // with a csrf token in the 'state' and an authorization code. We use the authorization code
@@ -26,8 +24,8 @@ pub async fn check(ouath_state: String, oauth_code: String) -> Result<String, Se
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use crate::auth::session::create_session;
-    use crate::auth::{Credentials, NewDbUser};
     use crate::person::{DbPerson, NewDbPerson};
+    use crate::user::{Credentials, NewDbUser};
     use crate::{config, db, AppState};
     use axum::extract::Host;
     use leptos::logging::warn;

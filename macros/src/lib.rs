@@ -23,11 +23,7 @@ pub fn generate_new(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 .map(|f| {
                     // Create a field without the #[not_in_new] attribute
                     let mut field = f.clone();
-                    field.attrs = field
-                        .attrs
-                        .into_iter()
-                        .filter(|attr| !attr.path.is_ident("not_in_new"))
-                        .collect();
+                    field.attrs.retain(|attr| !attr.path.is_ident("not_in_new"));
                     field
                 })
                 .collect::<Vec<_>>(),
@@ -145,22 +141,24 @@ pub fn generate_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
         })
         .collect();
 
-    let db_struct = quote! {
-            #(#attrs)*
-            pub struct #db_struct_name {
-                #(#db_fields),*
-            }
-    };
+    let db_struct =
+        quote! {
+                #(#attrs)*
+                pub struct #db_struct_name {
+                    #(#db_fields),*
+                }
+        };
 
-    let impl_db_struct = quote! {
-        impl From<#db_struct_name> for #struct_name {
-            fn from(item: #db_struct_name) -> Self {
-                Self {
-                    #(#db_field_assignments),*
+    let impl_db_struct =
+        quote! {
+            impl From<#db_struct_name> for #struct_name {
+                fn from(item: #db_struct_name) -> Self {
+                    Self {
+                        #(#db_field_assignments),*
+                    }
                 }
             }
-        }
-    };
+        };
     let gen = quote! {
         #input
 
@@ -221,35 +219,37 @@ pub fn generate_new_db(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ident_is_thing = |i: &syn::Ident| i.to_string().ends_with("_id") || i == "id";
 
     // Turn anything that ends in _id to a thing
-    let db_fields = match &input.data {
-        Data::Struct(data_struct) => match &data_struct.fields {
-            Fields::Named(fields_named) => fields_named
-                .named
-                .iter()
-                .filter(|f| f.ident.as_ref().unwrap() != "id") // Exclude 'id' field
-                .filter(|f| !field_has_attr(f)) // Exclude fields with #[not_in_new] attribute
-                .map(|f| {
-                    if ident_is_thing(f.ident.as_ref().unwrap()) {
-                        syn::Field {
-                            ty: syn::parse_str::<syn::Type>("surrealdb::sql::Thing").unwrap(),
-                            ..f.clone()
+    let db_fields =
+        match &input.data {
+            Data::Struct(data_struct) => match &data_struct.fields {
+                Fields::Named(fields_named) => fields_named
+                    .named
+                    .iter()
+                    .filter(|f| f.ident.as_ref().unwrap() != "id") // Exclude 'id' field
+                    .filter(|f| !field_has_attr(f)) // Exclude fields with #[not_in_new] attribute
+                    .map(|f| {
+                        if ident_is_thing(f.ident.as_ref().unwrap()) {
+                            syn::Field {
+                                ty: syn::parse_str::<syn::Type>("surrealdb::sql::Thing").unwrap(),
+                                ..f.clone()
+                            }
+                        } else {
+                            f.clone()
                         }
-                    } else {
-                        f.clone()
-                    }
-                })
-                .collect::<Vec<_>>(),
+                    })
+                    .collect::<Vec<_>>(),
+                _ => unimplemented!(),
+            },
             _ => unimplemented!(),
-        },
-        _ => unimplemented!(),
-    };
+        };
 
-    let db_struct = quote! {
-            #(#attrs)*
-            pub struct #db_struct_name {
-                #(#db_fields),*
-            }
-    };
+    let db_struct =
+        quote! {
+                #(#attrs)*
+                pub struct #db_struct_name {
+                    #(#db_fields),*
+                }
+        };
 
     let gen = quote! {
         #orig_struct

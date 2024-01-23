@@ -19,6 +19,8 @@ pub async fn signin(email: String, password: String) -> Result<String, ServerFnE
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use crate::auth::session::create_session;
+    use crate::person::NewDbPerson;
+    use crate::user::{Credentials, DbUser, NewDbUser};
     use leptos::{use_context, ServerFnError};
     use rand::distributions::{Alphanumeric, DistString};
     use sha256::Sha256Digest;
@@ -74,13 +76,15 @@ mod backend {
         let _foo: db::Record = app_state
             .db
             .create("person")
-            .content(db::NewPerson {
-                given_name,
-                family_name,
-                picture: None,
-                email,
-                phone,
-                credentials: db::Credentials::Password { hash, salt },
+            .content(NewDbUser {
+                person: NewDbPerson {
+                    given_name,
+                    family_name,
+                    picture: None,
+                    email,
+                    phone,
+                },
+                credentials: Credentials::Password { hash, salt },
             })
             .await
             .map_err(Fail::DbError)?
@@ -92,7 +96,7 @@ mod backend {
     pub async fn signin(email: String, password: String) -> Result<String, ServerFnError> {
         let app_state = use_context::<AppState>().ok_or(Fail::NoServerState)?;
 
-        let mut people: Vec<db::Person> = app_state
+        let mut users: Vec<DbUser> = app_state
             .db
             .query("select * from person where email=$email")
             .bind(("email", &email))
@@ -100,11 +104,11 @@ mod backend {
             .map_err(Fail::DbError)?
             .take(0)?;
 
-        let person = people.pop().ok_or(Fail::NoUser(email.clone()))?;
+        let user = users.pop().ok_or(Fail::NoUser(email.clone()))?;
 
-        match person.credentials {
-            db::Credentials::OAuth => return Err(Fail::WrongCreds(email.clone()).into()),
-            db::Credentials::Password { hash, salt } => {
+        match user.credentials {
+            Credentials::OAuth => return Err(Fail::WrongCreds(email.clone()).into()),
+            Credentials::Password { hash, salt } => {
                 make_hash(salt, password)
                     .eq(&hash)
                     .then_some(())
@@ -112,7 +116,7 @@ mod backend {
             }
         }
 
-        Ok(create_session(person.id.into()).await?)
+        Ok(create_session(user.person.id.into()).await?)
     }
 
     fn make_hash<T, S>(salt: T, pw: S) -> String

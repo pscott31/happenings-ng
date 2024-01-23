@@ -1,4 +1,4 @@
 [formatting]
-align_entries = false
-indent_entries = true
-reorder_keys = true
+  align_entries = false
+  indent_entries = true
+  reorder_keys = true

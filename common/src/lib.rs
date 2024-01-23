@@ -7,6 +7,7 @@ pub mod generic_id;
 pub mod person;
 pub mod square_api;
 pub mod ticket;
+pub mod user;
 
 cfg_if::cfg_if! {
 if #[cfg(not(target_arch = "wasm32"))] {

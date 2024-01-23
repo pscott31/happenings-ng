@@ -42,6 +42,8 @@
   # leptos_axum_hack = { workspace = true } #why does this not work??
   leptos_axum_hack = { path = "../leptos_axum_hack" }
   mime_guess = { workspace = true }
+  oauth2 = { workspace = true, features = ["reqwest"] }
+
   once_cell = { workspace = true }
   phonenumber = { workspace = true }
   sanitizer = { workspace = true }
@@ -59,10 +61,12 @@
   tower-http = { workspace = true, features = ["trace", "tracing"] }
   tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
-[build-dependencies]
-  anyhow = "1.0.75"
-  jobserver = "0.1.27"
-  wasm-bindgen-cli-support = "0.2.89"
+  # [target.'cfg(not(target_arch = "wasm32"))'.build-dependencies]
+  #   axum-macros = { workspace = true }
+  # [build-dependencies]
+  #   anyhow = "1.0.75"
+  #   jobserver = "0.1.27"
+  #   wasm-bindgen-cli-support = "0.2.89"
 
 [dev-dependencies]
   axum-test = "14.0.0"

@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::thread::available_parallelism;
 use tokio_util::task::LocalPoolHandle;
 
-const MAX_BODY_SIZE: usize = 1 * 1024 * 1024;
+const MAX_BODY_SIZE: usize = 2 * 1024 * 1024;
 
 fn get_task_pool() -> LocalPoolHandle {
     static LOCAL_POOL: OnceCell<LocalPoolHandle> = OnceCell::new();
@@ -126,18 +126,19 @@ where
             header_ref.extend(res_headers.drain());
         };
 
-        let res = match payload {
-            Payload::Binary(data) => res
-                .header("Content-Type", "application/cbor")
-                .body(Body::from(data)),
-            Payload::Url(data) => res
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(Body::from(data)),
-            Payload::Json(data) => res
-                .header("Content-Type", "application/json")
-                .body(Body::from(data)),
-        }
-        .expect("could not build response");
+        let res =
+            match payload {
+                Payload::Binary(data) => res
+                    .header("Content-Type", "application/cbor")
+                    .body(Body::from(data)),
+                Payload::Url(data) => res
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(Body::from(data)),
+                Payload::Json(data) => res
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(data)),
+            }
+            .expect("could not build response");
         // Ok::<hyper::Response<axum::body::Body>, E>((res)
         Result::<Response<Body>, Fail>::Ok(res)
     };

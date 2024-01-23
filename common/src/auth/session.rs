@@ -85,5 +85,5 @@ pub async fn create_session(person_id: PersonId) -> Result<String, Fail> {
     Ok(session_record.id.id.to_string())
 }
 
-    }}
+}}
 

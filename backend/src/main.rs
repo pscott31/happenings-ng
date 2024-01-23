@@ -6,7 +6,7 @@ use crate::error_handling::AppError;
 use anyhow::anyhow;
 use axum::{body::Body, extract::{Host, Path, RawQuery, Request, State}, http::{header, HeaderMap, StatusCode}, response::{IntoResponse, Response}, routing::{get, post}, Json, Router};
 use axum_extra::extract::CookieJar;
-use common::{axum::LoggedInUser, db, person::DbPerson, AppState};
+use common::{auth::session::Session, axum::LoggedInUser, person::DbPerson, AppState};
 use common::{config::Config, person::Person};
 use dotenv::dotenv;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
@@ -139,7 +139,7 @@ async fn user_handler(
         .ok_or(anyhow!("No Authorization Header"))?
         .to_str()?;
 
-    let session: db::Session = app_state
+    let session: Session = app_state
         .db
         .select(("session", session_id))
         .await?
@@ -188,8 +188,7 @@ async fn wasm_handler() -> impl IntoResponse {
 async fn js_handler() -> impl IntoResponse {
     // In debug mode, read the file at runtime
     #[cfg(debug_assertions)]
-    let content =
-        std::fs::read(option_env!("HAPPENINGS_JS").unwrap()).expect("Failed to read file");
+    let content = std::fs::read(env!("HAPPENINGS_JS")).expect("Failed to read file");
 
     // In release mode, embed the file at compile time
     #[cfg(not(debug_assertions))]
