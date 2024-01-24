@@ -5,6 +5,7 @@ testdata.db/*
 history.txt
 .DS_Store
 .VSCodeCounter
+.lsp
 happenings.toml
 happenings.db
 scripts/testdata.db
