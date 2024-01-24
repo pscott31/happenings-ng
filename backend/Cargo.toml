@@ -14,7 +14,7 @@
   axum-extra = { workspace = true, features = ["cookie"] }
 
   chrono = { workspace = true, features = ["serde"] }
-  common = { workspace = true }
+  # common = { workspace = true }
   derive_builder = { workspace = true }
   dotenv = { workspace = true }
   figment = { workspace = true, features = ["env", "toml"] }
@@ -50,9 +50,7 @@
 
 
 [build-dependencies]
-  axum-macros = { workspace = true }
-  #  anyhow = "1.0.75"
-  #  wasm-bindgen-cli-support = "0.2.89"
+  frontend = { artifact = "cdylib", target = "wasm32-unknown-unknown", path = "../frontend" }
 
 [dev-dependencies]
   axum-test = { workspace = true }
