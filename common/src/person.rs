@@ -69,7 +69,6 @@ pub async fn get_logged_in_person() -> Result<Person, leptos::ServerFnError> {
 }
 
 #[leptos::server(PersonExists, "/api", "Url", "person_exists")]
-
 pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
     backend::person_exists(email).await
 }

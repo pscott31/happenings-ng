@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use common::person::Person;
+use common::user;
 use leptos::*;
 use leptos_struct_table::*;
 use serde::{Deserialize, Serialize};
@@ -22,41 +22,41 @@ pub struct User {
     pub phone: Option<String>,
 }
 
-impl From<Person> for User {
-    fn from(u: Person) -> Self {
+impl From<user::User> for User {
+    fn from(u: user::User) -> Self {
         User {
-            id: u.id.to_string(),
-            given_name: u.given_name,
-            family_name: u.family_name,
-            email: u.email,
-            phone: u.phone,
+            id: u.person.id.to_string(),
+            given_name: u.person.given_name,
+            family_name: u.person.family_name,
+            email: u.person.email,
+            phone: u.person.phone,
         }
     }
 }
 
 #[component]
 pub fn Users() -> impl IntoView {
-    // let users = create_rw_signal::<Vec<User>>(vec![]);
-    // let _r = create_resource(
-    //     || (),
-    //     move |_| async move {
-    //         let doofers: Vec<User> = list_users()
-    //             .await
-    //             .unwrap_or(vec![])
-    //             .into_iter()
-    //             .map(|u| u.into())
-    //             .collect();
+    let users = create_rw_signal::<Vec<User>>(vec![]);
+    let _r = create_resource(
+        || (),
+        move |_| async move {
+            let doofers: Vec<User> = user::list_users()
+                .await
+                .unwrap_or(vec![])
+                .into_iter()
+                .map(|u| u.into())
+                .collect();
 
-    //         users.set(doofers);
-    //     },
-    // );
-    // view! {
-    //   <section class="section">
-    //     <div class="container">
-    //       <h1>Users</h1>
-    //       <UserTable items=users/>
-    //     </div>
-    //   </section>
-    // }
+            users.set(doofers);
+        },
+    );
+    view! {
+      <section class="section">
+        <div class="container">
+          <h1>Users</h1>
+          <UserTable items=users/>
+        </div>
+      </section>
+    }
 }
 
