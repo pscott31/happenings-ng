@@ -1,3 +1,4 @@
+use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 
 use crate::person::Person;
@@ -42,30 +43,27 @@ pub struct NewDbUser {
     pub credentials: Credentials,
 }
 
-#[leptos::server(HelloWorld, "/api", "Url", "list_users")]
-pub async fn list_users() -> Result<Vec<User>, leptos::ServerFnError> {
-    backend::list_users().await
-}
+#[server(ListUsers, "/api", "Url", "list_users")]
+pub async fn list_users() -> Result<Vec<User>, ServerFnError> { backend::list_users().await }
 
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use super::*;
     use crate::AppState;
-    use leptos::{use_context, ServerFnError::ServerError};
+    use leptos::use_context;
 
-    pub async fn list_users() -> Result<Vec<User>, leptos::ServerFnError> {
-        let app_state =
-            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+    pub async fn list_users() -> Result<Vec<User>, ServerFnError> {
+        let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
         let people: Vec<DbUser> = app_state
             .db
             .query("SELECT * FROM person;")
             .await
-            .map_err(|_| ServerError("db query failed".to_string()))?
+            .map_err(|_| ServerFnError::new("db query failed"))?
             .take(0)?;
 
         let users: Vec<User> = people.into_iter().map(|x| x.into()).collect();
-        return Ok(users);
+        Ok(users)
     }
 }
 

@@ -287,8 +287,7 @@ pub fn SignInWelcome() -> impl IntoView {
         class="button"
         type="button"
         on:click=move |_| {
-            let url = format!("{}/{}", OAuthRedirect::prefix(), OAuthRedirect::url());
-            let _ = oauth_popup(url.as_ref(), on_success);
+            let _ = oauth_popup(OAuthRedirect::PATH, on_success);
         }
       >
 

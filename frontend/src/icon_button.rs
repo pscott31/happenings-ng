@@ -1,6 +1,6 @@
 use crate::utils::*;
 use leptos::*;
-use leptos_icons::{FaIcon, Icon};
+use leptos_icons::Icon;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
@@ -65,7 +65,7 @@ pub fn IconButton<F>(
     // todo this should work
     // #[prop(into)] on_click: Callback<()>,
     on_click: F,
-    #[prop(into, optional)] icon: Option<FaIcon>,
+    #[prop(into, optional)] icon: Option<icondata::Icon>,
     #[prop(into, optional)] color: Color,
     #[prop(into, optional)] size: Size,
     #[prop(into, optional)] class: OptionalMaybeSignal<String>,
@@ -79,7 +79,7 @@ where
     let icon_view = icon.map(|i| {
         view! {
           <span class=format!("icon {}", size)>
-            <Icon icon=Icon::from(i)/>
+            <Icon icon=i/>
           </span>
         }
     });

@@ -31,7 +31,7 @@
     "tokio",
   ] }
   leptos = { workspace = true }
-  leptos_axum_hack = { workspace = true }
+  leptos_axum = { workspace = true }
   mime_guess = { workspace = true }
   oauth2 = { workspace = true }
   once_cell = { workspace = true }

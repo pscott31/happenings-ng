@@ -31,7 +31,7 @@ mod backend {
     use leptos::logging::warn;
     use leptos::use_context;
     use leptos::ServerFnError::{self, ServerError};
-    use leptos_axum_hack;
+    use leptos_axum;
     use oauth2::reqwest::async_http_client;
     use oauth2::{basic::BasicClient, CsrfToken, PkceCodeChallenge, RedirectUrl};
     use oauth2::{AuthorizationCode, PkceCodeVerifier, Scope, TokenResponse};
@@ -112,7 +112,7 @@ mod backend {
             .map_err(Fail::DbError)?
             .ok_or(Fail::NotCreated)?;
 
-        leptos_axum_hack::redirect(authorize_url.to_string().as_ref());
+        leptos_axum::redirect(authorize_url.to_string().as_ref());
         Ok("redirecting!".to_string())
     }
 

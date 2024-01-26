@@ -9,8 +9,8 @@ use common::booking::{self, get_booking, BookingId, CreateBooking, Status};
 use common::event::{get_event, Event, EventId};
 use common::person::{get_person, Person};
 use common::ticket::Ticket;
+use icondata as i;
 use leptos::*;
-use leptos_icons::FaIcon::*;
 use leptos_router::{use_params_map, Outlet};
 use log::*;
 use rust_decimal::Decimal;
@@ -458,13 +458,13 @@ pub fn NewBookingForPerson(
             <TicketForm tickets=tickets/>
             <div class="field is-grouped is-flex-wrap-wrap">
               <p class="control">
-                <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
+                <IconButton icon=i::FaPlusSolid color=Color::Secondary on_click=add_ticket>
                   "Add Another Ticket"
                 </IconButton>
               </p>
               <p class="control">
                 <IconButton
-                  icon=FaBasketShoppingSolid
+                  icon=i::FaBasketShoppingSolid
                   color=Color::Primary
                   on_click=on_submit
                   disabled=pending
@@ -502,7 +502,7 @@ pub fn TicketForm(tickets: RwSignal<ReactiveList<Ticket>>) -> impl IntoView {
                               view! {
                                 {format!("Ticket {}", { i + 1 })}
                                 <br/>
-                                <IconButton on_click=move || tickets.tracked_remove(uid) icon=FaTrashSolid/>
+                                <IconButton on_click=move || tickets.tracked_remove(uid) icon=i::FaTrashSolid/>
                               }
                           }>
                             <TicketControl ticket=gv/>

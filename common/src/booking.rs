@@ -212,8 +212,7 @@ mod backend {
     ) -> Result<Booking, ServerFnError> {
         info!("creating draft booking for {:?}/{:?}", event, contact);
 
-        let app_state =
-            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+        let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
         let b = NewDbBooking {
             contact_id: contact.into(),
@@ -229,11 +228,11 @@ mod backend {
             .create("booking")
             .content(b)
             .await
-            .map_err(|e| ServerError(format!("failed to create new booking: {}", e)))?;
+            .map_err(|e| ServerFnError::new(format!("failed to create new booking: {}", e)))?;
 
         let b = bs
             .pop()
-            .ok_or(ServerError("failed to create new booking".to_string()))?;
+            .ok_or(ServerFnError::new("failed to create new booking"))?;
 
         get(b.id.into()).await
     }

@@ -1,3 +1,4 @@
+use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 
 pub type PersonId = GenericId<Person>;
@@ -58,18 +59,16 @@ impl Person {
     pub fn full_name(&self) -> String { format!("{} {}", self.given_name, self.family_name) }
 }
 
-#[leptos::server(GetPerson, "/api", "Url", "get_person")]
-pub async fn get_person(id: PersonId) -> Result<Person, leptos::ServerFnError> {
-    backend::get(id).await
-}
+#[server(GetPerson, "/api", "Url", "get_person")]
+pub async fn get_person(id: PersonId) -> Result<Person, ServerFnError> { backend::get(id).await }
 
-#[leptos::server(GetLoggedInPerson, "/api", "Url", "get_logged_in_person")]
-pub async fn get_logged_in_person() -> Result<Person, leptos::ServerFnError> {
+#[server(GetLoggedInPerson, "/api", "Url", "get_logged_in_person")]
+pub async fn get_logged_in_person() -> Result<Person, ServerFnError> {
     backend::get_logged_in().await
 }
 
-#[leptos::server(PersonExists, "/api", "Url", "person_exists")]
-pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
+#[server(PersonExists, "/api", "Url", "person_exists")]
+pub async fn person_exists(email: String) -> Result<bool, ServerFnError> {
     backend::person_exists(email).await
 }
 
@@ -77,18 +76,17 @@ pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError>
 mod backend {
     use super::*;
     use crate::{axum::LoggedInUser, db, AppState};
-    use leptos::{use_context, ServerFnError::ServerError};
+    use leptos::use_context;
 
     pub async fn get(id: PersonId) -> Result<Person, leptos::ServerFnError> {
-        let app_state =
-            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+        let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
         let person: DbPerson = app_state
             .db
             .select(&id)
             .await
-            .map_err(|_| ServerError("db query failed".to_string()))?
-            .ok_or(ServerError(format!("no person {} found", id).to_string()))?;
+            .map_err(|_| ServerFnError::new("db query failed"))?
+            .ok_or(ServerFnError::new(format!("no person {} found", id)))?;
 
         Ok(person.into())
     }
@@ -96,15 +94,14 @@ mod backend {
     pub async fn get_logged_in() -> Result<Person, leptos::ServerFnError> {
         let u = use_context::<Option<LoggedInUser>>();
         match u {
-            None => Err(ServerError("no current user in context".to_string())),
-            Some(None) => Err(ServerError("no current user in context".to_string())),
+            None => Err(ServerFnError::new("no current user in context")),
+            Some(None) => Err(ServerFnError::new("no current user in context")),
             Some(Some(LoggedInUser(person))) => Ok(person),
         }
     }
 
     pub async fn person_exists(email: String) -> Result<bool, leptos::ServerFnError> {
-        let app_state =
-            use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+        let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
         let people: Vec<db::Record> = app_state
             .db

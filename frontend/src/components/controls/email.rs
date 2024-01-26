@@ -1,7 +1,8 @@
 use email_address::*;
+use icondata as i;
 use leptos::logging::*;
 use leptos::*;
-use leptos_icons::{FaIcon::*, Icon};
+use leptos_icons::Icon;
 use std::str::FromStr;
 
 #[component]
@@ -26,13 +27,13 @@ pub fn Email(
         if email_address().is_ok() {
             Some(view! {
               <span class="icon is-small is-right">
-                <Icon icon=Icon::from(FaCheckSolid)/>
+                <Icon icon=i::FaCheckSolid/>
               </span>
             })
         } else {
             Some(view! {
               <span class="icon is-small is-right">
-                <Icon icon=Icon::from(FaTriangleExclamationSolid)/>
+                <Icon icon=i::FaTriangleExclamationSolid/>
               </span>
             })
         }
@@ -54,7 +55,7 @@ pub fn Email(
         />
 
         <span class="icon is-small is-left">
-          <Icon icon=Icon::from(FaEnvelopeSolid)/>
+          <Icon icon=i::FaEnvelopeSolid/>
         </span>
         {email_right_icon}
       </div>

@@ -15,20 +15,12 @@
   console_error_panic_hook = { workspace = true }
   console_log = { workspace = true }
   email_address = { workspace = true }
+  icondata = { workspace = true }
   indexmap = { workspace = true }
   leptos = { workspace = true, features = ["csr", "nightly"] }
   leptos-struct-table = { workspace = true, features = ["chrono", "uuid"] }
   leptos-use = { workspace = true, features = ["serde", "serde_json"] }
-  leptos_icons = { workspace = true, features = [
-    "FaBasketShoppingSolid",
-    "FaCheckSolid",
-    "FaEnvelopeSolid",
-    "FaPhoneSolid",
-    "FaPlusSolid",
-    "FaTrashSolid",
-    "FaTriangleExclamationSolid",
-    "FaUserSolid",
-  ] }
+  leptos_icons = { workspace = true }
   leptos_macro = { workspace = true, features = ["csr", "nightly"] }
   leptos_router = { workspace = true, features = ["csr", "nightly"] }
   log = { workspace = true }

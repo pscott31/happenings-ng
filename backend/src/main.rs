@@ -4,7 +4,7 @@ mod server;
 
 use crate::error_handling::AppError;
 use anyhow::anyhow;
-use axum::{body::Body, extract::{Host, Path, RawQuery, Request, State}, http::{header, HeaderMap, StatusCode}, response::{IntoResponse, Response}, routing::{get, post}, Json, Router};
+use axum::{body::Body, extract::{Host, Path, Request, State}, http::{header, HeaderMap, StatusCode}, response::{IntoResponse, Response}, routing::{get, post}, Json, Router};
 use axum_extra::extract::CookieJar;
 use common::{auth::session::Session, axum::LoggedInUser, person::DbPerson, AppState};
 use common::{config::Config, person::Person};
@@ -101,21 +101,20 @@ impl IntoResponse for Fail {
 }
 
 pub async fn my_handler(
-    path: Path<String>,
-    raw_query: RawQuery,
-    state: State<AppState>,
     jar: CookieJar,
     host: Host,
     logged_in_user: Option<LoggedInUser>,
+    State(state): State<AppState>,
     req: Request<Body>,
 ) -> impl IntoResponse {
     let additional_context = move || {
         provide_context(logged_in_user.clone());
         provide_context(jar.clone());
         provide_context(host.clone());
+        provide_context(state.clone());
     };
 
-    leptos_axum_hack::handle_server_fns(path, raw_query, state, req, additional_context).await
+    leptos_axum::handle_server_fns_with_context(additional_context, req).await
 }
 fn build_app(db: Surreal<Any>, config: Config) -> Router {
     Router::new()

@@ -1,5 +1,6 @@
+use icondata as i;
 use leptos::*;
-use leptos_icons::{FaIcon::*, Icon};
+use leptos_icons::Icon;
 
 #[component]
 pub fn Name(
@@ -31,7 +32,7 @@ pub fn Name(
           disabled=disabled()
         />
         <span class="icon is-small is-left">
-          <Icon icon=Icon::from(FaUserSolid)/>
+          <Icon icon=i::FaUserSolid/>
         </span>
       </div>
       {name_err}

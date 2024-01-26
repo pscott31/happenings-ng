@@ -1,5 +1,5 @@
 use leptos::*;
-use leptos_icons::{FaIcon, Icon};
+use leptos_icons::Icon;
 
 #[component]
 pub fn Text(
@@ -7,12 +7,12 @@ pub fn Text(
     #[prop(into, optional)] placeholder: Option<String>,
     #[prop(into)] get: MaybeSignal<String>,
     #[prop(into, default=Callback::new(|x:String|{}))] set: Callback<String>,
-    #[prop(into, optional)] icon: Option<FaIcon>,
+    #[prop(into, optional)] icon: Option<icondata::Icon>,
 ) -> impl IntoView {
     let icon_view = icon.map(|i| {
         view! {
           <span class=format!("icon is-small is-left")>
-            <Icon icon=Icon::from(i)/>
+            <Icon icon=i/>
           </span>
         }
     });

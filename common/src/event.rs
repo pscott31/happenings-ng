@@ -66,12 +66,11 @@ cfg_if::cfg_if! {
 if #[cfg(not(target_arch = "wasm32"))] {
     use crate::{db, AppState};
     use leptos::use_context;
-    use leptos::ServerFnError::ServerError;
 }}
 
 #[leptos::server(CreateEvent, "/api", "Url", "create_event")]
 pub async fn new_event(e: NewEvent) -> Result<String, ServerFnError> {
-    let app_state = use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+    let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
     let r: db::Record = app_state
         .db
@@ -79,36 +78,36 @@ pub async fn new_event(e: NewEvent) -> Result<String, ServerFnError> {
         .content(e)
         .await?
         .pop()
-        .ok_or(ServerError("failed to create new event".to_string()))?;
-    return Ok(r.id.to_string());
+        .ok_or(ServerFnError::new("failed to create new event"))?;
+    Ok(r.id.to_string())
 }
 
 #[leptos::server(ListEvents, "/api", "Url", "list_events")]
-pub async fn list_events() -> Result<Vec<Event>, leptos::ServerFnError> {
-    let app_state = use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+pub async fn list_events() -> Result<Vec<Event>, ServerFnError> {
+    let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
     // TODO - get DbEvent then into Event?
     let events: Vec<Event> = app_state
         .db
         .query("SELECT meta::id(id) as id, * FROM event;")
         .await
-        .map_err(|e| ServerError(format!("db query failed: {e:?}")))?
+        .map_err(|e| ServerFnError::new(format!("db query failed: {e:?}")))?
         .take(0)?;
 
-    return Ok(events);
+    Ok(events)
 }
 
 #[leptos::server(GetEvent, "/api", "Url", "get_event")]
-pub async fn get_event(id: EventId) -> Result<Event, leptos::ServerFnError> {
-    let app_state = use_context::<AppState>().ok_or(ServerError("No server state".to_string()))?;
+pub async fn get_event(id: EventId) -> Result<Event, ServerFnError> {
+    let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
     let event: DbEvent = app_state
         .db
         .select(id)
         .await?
-        .ok_or(ServerError("no event found".to_string()))?;
+        .ok_or(ServerFnError::new("no event found"))?;
 
-    return Ok(event.into());
+    Ok(event.into())
 }
 
 ////////////////////////// Testy McTest Face //////////////////////////////////////
