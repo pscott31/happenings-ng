@@ -1,13 +1,10 @@
-mod error_handling;
 mod middleware;
 mod server;
 
-use crate::error_handling::AppError;
-use anyhow::anyhow;
-use axum::{body::Body, extract::{Host, Path, Request, State}, http::{header, HeaderMap, StatusCode}, response::{IntoResponse, Response}, routing::{get, post}, Json, Router};
+use axum::{body::Body, extract::{Host, Path, Request, State}, http::{header, StatusCode}, response::IntoResponse, routing::{get, post}, Router};
 use axum_extra::extract::CookieJar;
-use common::{auth::session::Session, axum::LoggedInUser, person::DbPerson, AppState};
-use common::{config::Config, person::Person};
+use common::config::Config;
+use common::{axum::LoggedInUser, AppState};
 use dotenv::dotenv;
 use figment::{providers::{Env, Format, Serialized, Toml}, Figment};
 use leptos::provide_context;
@@ -70,36 +67,6 @@ async fn connect_db(config: &Config) -> anyhow::Result<Surreal<Any>> {
     Ok(db)
 }
 
-pub enum Fail {
-    BadServerPath(String),
-    JoinError(tokio::task::JoinError),
-    NoUser,
-    NoSession,
-    NoAuthCookie,
-    SessionExpired,
-    DbError(surrealdb::Error),
-}
-
-impl IntoResponse for Fail {
-    fn into_response(self) -> Response {
-        let msg = match self {
-            Fail::BadServerPath(p) => format!("no server function '{p}' found"),
-            Fail::JoinError(e) => e.to_string(),
-            Fail::NoAuthCookie => "no authorization cookie found".to_string(),
-            Fail::NoSession => "no session found".to_string(),
-            Fail::SessionExpired => "session expired".to_string(),
-            Fail::DbError(e) => e.to_string(),
-            Fail::NoUser => "session user not found".to_string(),
-        };
-
-        // TODO - better codes for different errors
-        Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::from(msg))
-            .unwrap()
-    }
-}
-
 pub async fn my_handler(
     jar: CookieJar,
     host: Host,
@@ -122,41 +89,10 @@ fn build_app(db: Surreal<Any>, config: Config) -> Router {
         .route("/app.wasm", get(wasm_handler))
         .route("/app.js", get(js_handler))
         .route("/static/*path", get(static_handler))
-        .route("/api/user", post(user_handler)) // TODO: rename current_user?
         .route("/api/*fn_name", post(my_handler))
         .route("/api/*fn_name", get(my_handler))
         .fallback(get(root_handler))
         .with_state(common::AppState { db, config })
-}
-
-async fn user_handler(
-    State(app_state): State<AppState>,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, AppError> {
-    let session_id = headers
-        .get("Authorization")
-        .ok_or(anyhow!("No Authorization Header"))?
-        .to_str()?;
-
-    let session: Session = app_state
-        .db
-        .select(("session", session_id))
-        .await?
-        .ok_or(anyhow!("no session with id {session_id}"))?;
-
-    if chrono::Utc::now() > session.expires_at {
-        Err(anyhow!("session expired"))?
-    }
-
-    let user: DbPerson = app_state
-        .db
-        .select(session.user)
-        .await?
-        .ok_or(anyhow!("no user matching id in session"))?;
-
-    let person: Person = user.into();
-
-    Ok(Json(person))
 }
 
 async fn root_handler() -> impl IntoResponse {
