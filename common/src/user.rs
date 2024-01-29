@@ -1,9 +1,11 @@
 use leptos::{server, ServerFnError};
 use serde::{Deserialize, Serialize};
 
-use crate::person::Person;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::person::{DbPerson, NewDbPerson};
+use crate::person::db::{DbPerson, NewDbPerson};
+use crate::person::Person;
+use crate::role::RoleId;
+use crate::schema::Schema;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Credentials {
@@ -15,6 +17,12 @@ pub enum Credentials {
 pub struct User {
     pub person: Person,
     pub credentials: Credentials,
+    pub roles: Vec<RoleId>,
+}
+
+impl Schema for User {
+    const TABLE: &'static str = "person";
+    const SELECT: &'static str = "*, ->has_role->role as roles";
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -23,6 +31,7 @@ pub struct DbUser {
     #[serde(flatten)]
     pub person: DbPerson,
     pub credentials: Credentials,
+    pub roles: Vec<surrealdb::sql::Thing>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -31,6 +40,7 @@ impl From<DbUser> for User {
         Self {
             person: item.person.into(),
             credentials: item.credentials,
+            roles: item.roles.into_iter().map(|r| r.into()).collect(),
         }
     }
 }
@@ -57,7 +67,7 @@ mod backend {
 
         let people: Vec<DbUser> = app_state
             .db
-            .query("SELECT * FROM person;")
+            .query(format!("SELECT {} FROM {};", User::SELECT, User::TABLE))
             .await
             .map_err(|_| ServerFnError::new("db query failed"))?
             .take(0)?;

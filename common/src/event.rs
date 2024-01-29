@@ -1,12 +1,13 @@
-use crate::{generic_id::{GenericId, TableName}, ticket::{TicketType, TicketTypes}};
+use crate::schema::Schema;
+use crate::{generic_id::Id, ticket::{TicketType, TicketTypes}};
 use chrono::{DateTime, Local, Utc};
 use leptos::ServerFnError;
 use macros::generate_new;
 use serde::{Deserialize, Serialize};
 
-pub type EventId = GenericId<Event>;
-impl TableName for Event {
-    const TABLE_NAME: &'static str = "event";
+pub type EventId = Id<Event>;
+impl Schema for Event {
+    const TABLE: &'static str = "event";
 }
 #[generate_new]
 // #[generate_db]
@@ -64,7 +65,7 @@ impl Event {
 #[cfg(not(target_arch = "wasm32"))]
 cfg_if::cfg_if! {
 if #[cfg(not(target_arch = "wasm32"))] {
-    use crate::{db, AppState};
+    use crate::{surreal, AppState};
     use leptos::use_context;
 }}
 
@@ -72,7 +73,7 @@ if #[cfg(not(target_arch = "wasm32"))] {
 pub async fn new_event(e: NewEvent) -> Result<String, ServerFnError> {
     let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
-    let r: db::Record = app_state
+    let r: surreal::Record = app_state
         .db
         .create("event")
         .content(e)

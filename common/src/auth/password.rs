@@ -19,15 +19,16 @@ pub async fn signin(email: String, password: String) -> Result<String, ServerFnE
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use crate::auth::session::create_session;
-    use crate::person::NewDbPerson;
-    use crate::user::{Credentials, DbUser, NewDbUser};
+    use crate::person::db::NewDbPerson;
+    use crate::schema::Schema;
+    use crate::user::{Credentials, DbUser, NewDbUser, User};
     use leptos::{use_context, ServerFnError};
     use rand::distributions::{Alphanumeric, DistString};
     use sha256::Sha256Digest;
 
     use tracing::*;
 
-    use crate::{db, AppState};
+    use crate::{surreal, AppState};
 
     enum Fail {
         NoServerState,
@@ -73,7 +74,7 @@ mod backend {
         let salt = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
         let hash = make_hash(&salt, password);
 
-        let _foo: db::Record = app_state
+        let _foo: surreal::Record = app_state
             .db
             .create("person")
             .content(NewDbUser {
@@ -98,7 +99,11 @@ mod backend {
 
         let mut users: Vec<DbUser> = app_state
             .db
-            .query("select * from person where email=$email")
+            .query(format!(
+                "select {} from {} where email=$email",
+                User::SELECT,
+                User::TABLE
+            ))
             .bind(("email", &email))
             .await
             .map_err(Fail::DbError)?

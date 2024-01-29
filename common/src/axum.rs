@@ -1,3 +1,7 @@
+use surrealdb::sql::Thing;
+
+use crate::schema::Schema;
+
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
 
@@ -6,7 +10,7 @@ use axum::{async_trait, extract::{FromRequestParts}, http::request::Parts, http:
 use axum_extra::extract::CookieJar;
 
 use crate::{auth::session::{DbSession, Session, SessionId}, AppState};
-use crate::person::{Person, DbPerson};
+use crate::person::{Person, db::DbPerson};
 
 pub enum Fail {
     BadServerPath(String),
@@ -52,12 +56,23 @@ where
     ) -> Result<Self, Self::Rejection> {
         let SessionWrapper(session) = SessionWrapper::from_request_parts(parts, state).await?;
 
-        let person: DbPerson = state
+        let people: Vec<DbPerson> = state
         .db
-        .select(&session.user)
+        .query(format!(
+            "SELECT {} FROM {} where id=$id;",
+            Person::SELECT,
+            Person::TABLE,
+        ))
+        .bind(("id", Thing::from(&session.user)))
         .await
         .map_err(Fail::DbError)?
-        .ok_or(Fail::NoUser)?;
+        .take(0)
+        .map_err(Fail::DbError)?;
+
+        let person = people
+            .into_iter()
+            .next()
+            .ok_or(Fail::NoUser)?;
 
         Ok(LoggedInUser(person.into()))
     }

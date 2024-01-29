@@ -1,5 +1,4 @@
 use leptos::ServerFnError;
-
 // This guy generates an OAuth link by making a PkceCodeChallenge and storing it in the database
 // then generating a link to your OAuth provider (currently only one is supported, it would be
 // easy to expand it to multiple providers)
@@ -24,9 +23,10 @@ pub async fn check(ouath_state: String, oauth_code: String) -> Result<String, Se
 #[cfg(not(target_arch = "wasm32"))]
 mod backend {
     use crate::auth::session::create_session;
-    use crate::person::{DbPerson, NewDbPerson};
-    use crate::user::{Credentials, NewDbUser};
-    use crate::{config, db, AppState};
+    use crate::person::db::NewDbPerson;
+    use crate::schema::Schema;
+    use crate::user::{Credentials, DbUser, NewDbUser, User};
+    use crate::{config, surreal, AppState};
     use axum::extract::Host;
     use leptos::logging::warn;
     use leptos::use_context;
@@ -101,7 +101,7 @@ mod backend {
             .set_pkce_challenge(pkce_code_challenge)
             .url();
 
-        let _record: db::Record = app_state
+        let _record: surreal::Record = app_state
             .db
             .create(("oauth2_state", csrf_state.secret().clone()))
             .content(OAuth2State {
@@ -160,13 +160,17 @@ mod backend {
 
         let mut result = app_state
             .db
-            .query("SELECT * FROM person where email=$email;")
+            .query(format!(
+                "SELECT {} FROM {} where email=$email;",
+                User::SELECT,
+                User::TABLE
+            ))
             .bind(("email", &user_info.email))
             .await?;
 
-        let mut people: Vec<DbPerson> = result.take(0)?;
+        let mut people: Vec<DbUser> = result.take(0)?;
 
-        let person = match people.pop() {
+        let user = match people.pop() {
             Some(person) => person,
             None => app_state
                 .db
@@ -187,7 +191,7 @@ mod backend {
         };
 
         // Create the session
-        let session = create_session(person.id.into()).await?;
+        let session = create_session(user.person.id.into()).await?;
         Ok(session)
     }
 

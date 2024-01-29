@@ -1,12 +1,13 @@
 use crate::event::{Event, EventId};
-use crate::generic_id::{GenericId, TableName};
+use crate::generic_id::Id;
 use crate::person::{Person, PersonId};
+use crate::schema::Schema;
 use crate::ticket::Ticket;
 use leptos::*;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-pub type BookingId = GenericId<Booking>;
+pub type BookingId = Id<Booking>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Booking {
     pub id: BookingId,
@@ -18,8 +19,8 @@ pub struct Booking {
     pub event: Event,
 }
 
-impl TableName for Booking {
-    const TABLE_NAME: &'static str = "booking";
+impl Schema for Booking {
+    const TABLE: &'static str = "booking";
 }
 
 impl Booking {
@@ -44,7 +45,7 @@ pub struct DbBooking {
     pub status: Status,
     pub payments: Vec<Payment>,
     pub square_order: Option<String>,
-    pub contact: crate::person::DbPerson,
+    pub contact: crate::person::db::DbPerson,
     pub event: crate::event::DbEvent,
 }
 
@@ -138,7 +139,7 @@ mod backend {
     use super::*;
     use crate::event::EventId;
     use crate::AppState;
-    use crate::{db, square_api};
+    use crate::{square_api, surreal};
     use leptos::logging::warn;
     use leptos::ServerFnError::{self, ServerError};
     use phonenumber;
@@ -223,12 +224,13 @@ mod backend {
             square_order: None,
         };
 
-        let mut bs: Vec<crate::db::Record> = app_state
-            .db
-            .create("booking")
-            .content(b)
-            .await
-            .map_err(|e| ServerFnError::new(format!("failed to create new booking: {}", e)))?;
+        let mut bs: Vec<crate::surreal::Record> =
+            app_state
+                .db
+                .create("booking")
+                .content(b)
+                .await
+                .map_err(|e| ServerFnError::new(format!("failed to create new booking: {}", e)))?;
 
         let b = bs
             .pop()
@@ -308,7 +310,7 @@ mod backend {
 
         let parsed_res = res.json::<square_api::Welcome>().await?;
 
-        let _: db::Record = app_state
+        let _: surreal::Record = app_state
             .db
             .update(booking.id)
             .patch(PatchOp::replace(
@@ -354,7 +356,9 @@ mod backend {
             })
             .collect();
 
-        let total_paid = booking.total_paid();
+        let total_paid = payments
+            .iter()
+            .fold(Decimal::new(0, 2), |a, p| a + p.amount());
 
         let order_total = Decimal::new(parsed_res.order.total_money.amount, 2);
 
@@ -366,7 +370,7 @@ mod backend {
             booking.status
         };
 
-        let _: db::Record = app_state
+        let _: surreal::Record = app_state
             .db
             .update(&booking.id)
             .patch(PatchOp::replace("/payments", payments))

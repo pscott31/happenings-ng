@@ -10,7 +10,8 @@ use std::ops::Add;
 use surrealdb::sql::Thing;
 use crate::AppState;
 use crate::person::PersonId;
-use crate::generic_id::{TableName, GenericId};
+use crate::generic_id::Id;
+use crate::schema::Schema;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,7 +27,7 @@ pub struct DbSession {
     pub user: Thing,
 }
 
-pub type SessionId = GenericId<Session>;
+pub type SessionId = Id<Session>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
@@ -46,8 +47,8 @@ impl From<DbSession> for Session {
     }
 }
 
-impl TableName for Session {
-    const TABLE_NAME: &'static str = "session";
+impl Schema for Session {
+    const TABLE: &'static str = "session";
 }
 
 pub enum Fail {
@@ -70,7 +71,7 @@ impl From<Fail> for ServerFnError {
 pub async fn create_session(person_id: PersonId) -> Result<String, Fail> {
     let app_state = use_context::<AppState>().ok_or(Fail::NoAppState)?;
 
-    let session_record: crate::db::Record = app_state
+    let session_record: crate::surreal::Record = app_state
         .db
         .create("session")
         .content(NewDbSession {
