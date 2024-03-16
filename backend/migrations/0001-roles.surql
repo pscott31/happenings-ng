@@ -1,0 +1,2 @@
+ update person set roles=[];
+ 

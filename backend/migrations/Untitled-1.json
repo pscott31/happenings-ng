@@ -1,0 +1,140 @@
+curl https: //connect.squareupsandbox.com/v2/catalog/object \
+  -X POST \
+  -H 'Square-Version: 2024-02-22' \
+  -H 'Authorization: Bearer EAAAEPitjhTTtIaUPQSPMDvEkPWkGsUh6FkaAnVdhImKFoUaiaciJ82aoXKvnK41' \
+  -H 'Content-Type: application/json' \
+  -d '
+
+{
+    "idempotency_key": "4cf9a7c9-96be-4274-9c9a-cbb4e31aba47",
+    "object": {
+        "id": "#1",
+        "type": "ITEM",
+        "item_data": {
+            "name": "Treasure Hunt",
+            "variations": [
+                {
+                    "item_variation_data": {
+                        "name": "Adult - Tea at 1pm",
+                        "price_money": {
+                            "amount": 1000,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#2"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Adult - Tea at 1:30pm",
+                        "price_money": {
+                            "amount": 1000,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#3"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Adult - Tea at 2pm",
+                        "price_money": {
+                            "amount": 1000,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#4"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Adult - Tea at 2:30pm",
+                        "price_money": {
+                            "amount": 1000,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#5"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Adult - Tea at 3pm",
+                        "price_money": {
+                            "amount": 1000,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#6"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Child - Tea at 1pm",
+                        "price_money": {
+                            "amount": 500,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#7"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Child - Tea at 1:30pm",
+                        "price_money": {
+                            "amount": 500,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#8"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Child - Tea at 2pm",
+                        "price_money": {
+                            "amount": 500,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#9"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Child - Tea at 2:30pm",
+                        "price_money": {
+                            "amount": 500,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#1000"
+                },
+                {
+                    "item_variation_data": {
+                        "name": "Child - Tea at 3:30pm",
+                        "price_money": {
+                            "amount": 500,
+                            "currency": "GBP"
+                        },
+                        "pricing_type": "FIXED_PRICING"
+                    },
+                    "type": "ITEM_VARIATION",
+                    "id": "#11"
+                }
+            ]
+        }
+    }
+}
+'
