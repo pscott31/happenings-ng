@@ -1,0 +1,84 @@
+{
+    "client": "Thunder Client",
+    "collectionName": "happenings",
+    "dateExported": "2024-03-16T09:39:08.581Z",
+    "version": "1.1",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "9b7bb462-ad5c-4ef7-8368-6226370aa952",
+            "colId": "14be25d9-12ef-4edb-ad0f-5a69c71326c3",
+            "containerId": "",
+            "name": "create_event",
+            "url": "localhost:3000/api/create_event",
+            "method": "POST",
+            "sortNum": 10000,
+            "created": "2024-01-10T21:47:18.921Z",
+            "modified": "2024-01-22T22:34:29.286Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "e.name",
+                    "value": "Fancy Event",
+                    "isDisabled": true,
+                    "isPath": false
+                }
+            ],
+            "body": {
+                "type": "formencoded",
+                "raw": "",
+                "form": [
+                    {
+                        "name": "e[name]",
+                        "value": "Big Breakfast - January 2024"
+                    },
+                    {
+                        "name": "e[tagline]",
+                        "value": "Chris Evans not included"
+                    },
+                    {
+                        "name": "e[default_ticket_type][name]",
+                        "value": "Adult"
+                    },
+                    {
+                        "name": "e[default_ticket_type][price]",
+                        "value": "7.50"
+                    },
+                    {
+                        "name": "e[default_ticket_type][square_item_id]",
+                        "value": "bar"
+                    },
+                    {
+                        "name": "e[default_ticket_type][square_catalog_version]",
+                        "value": "1"
+                    },
+                    {
+                        "name": "e[additional_ticket_types][0][name]",
+                        "value": "Child"
+                    },
+                    {
+                        "name": "e[additional_ticket_types][0][price]",
+                        "value": "3.50"
+                    },
+                    {
+                        "name": "e[additional_ticket_types][0][square_item_id]",
+                        "value": "foo"
+                    },
+                    {
+                        "name": "e[additional_ticket_types][0][square_catalog_version]",
+                        "value": "1"
+                    },
+                    {
+                        "name": "e[start]",
+                        "value": "2024-01-21 10:00:00 UTC"
+                    },
+                    {
+                        "name": "e[end]",
+                        "value": "2024-01-21 12:00:00 UTC"
+                    }
+                ]
+            },
+            "tests": []
+        }
+    ]
+}
