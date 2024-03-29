@@ -1,6 +1,7 @@
 use crate::schema::Schema;
 use crate::{generic_id::Id, ticket::{TicketType, TicketTypes}};
 use chrono::{DateTime, Local, Utc};
+use leptos::server_fn::codec::Json;
 use leptos::ServerFnError;
 use macros::generate_new;
 use serde::{Deserialize, Serialize};
@@ -18,8 +19,28 @@ pub struct Event {
     pub tagline: String,
     pub default_ticket_type: TicketType,
     pub additional_ticket_types: Vec<TicketType>,
+    pub slots: Slots,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct Slot {
+    pub name: String,
+    pub capacity: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct Slots {
+    pub description: Option<String>,
+    pub list: Vec<Slot>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct SlotDetail {
+    pub name: String,
+    pub capacity: Option<i64>,
+    pub sold: i64,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -30,6 +51,8 @@ pub struct DbEvent {
     pub tagline: String,
     pub default_ticket_type: TicketType,
     pub additional_ticket_types: Vec<TicketType>,
+    pub slots: Slots,
+    pub slots_description: Option<String>,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
 }
@@ -43,6 +66,7 @@ impl From<DbEvent> for Event {
             tagline: item.tagline,
             default_ticket_type: item.default_ticket_type,
             additional_ticket_types: item.additional_ticket_types,
+            slots: item.slots,
             start: item.start,
             end: item.end,
         }
@@ -65,11 +89,13 @@ impl Event {
 #[cfg(not(target_arch = "wasm32"))]
 cfg_if::cfg_if! {
 if #[cfg(not(target_arch = "wasm32"))] {
+    use crate::booking::GOOD_STATUSES;
     use crate::{surreal, AppState};
     use leptos::use_context;
+    use surrealdb::sql::Thing;
 }}
 
-#[leptos::server(CreateEvent, "/api", "Url", "create_event")]
+#[leptos::server(name=CreateEvent, prefix="/api", endpoint="create_event", input = Json, output = Json)]
 pub async fn new_event(e: NewEvent) -> Result<String, ServerFnError> {
     let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
 
@@ -109,6 +135,30 @@ pub async fn get_event(id: EventId) -> Result<Event, ServerFnError> {
         .ok_or(ServerFnError::new("no event found"))?;
 
     Ok(event.into())
+}
+
+#[leptos::server(GetSlotDetails, "/api", "Url", "get_slot_details")]
+pub async fn get_slot_details(id: EventId) -> Result<Vec<SlotDetail>, ServerFnError> {
+    let app_state = use_context::<AppState>().ok_or(ServerFnError::new("No server state"))?;
+
+    let query = "
+    select name,
+           capacity,
+           math::sum(
+             select value 
+               count(array::matches(tickets.slot_name, $parent.name)) 
+               from booking
+               where event_id = $event and  status INSIDE $good_statuses) as sold
+            from (select value slots.list from only $event);";
+
+    let mut resp = app_state
+        .db
+        .query(query)
+        .bind(("event", Thing::from(&id)))
+        .bind(("good_statuses", GOOD_STATUSES))
+        .await?;
+    let details: Vec<SlotDetail> = resp.take(0)?;
+    Ok(details)
 }
 
 ////////////////////////// Testy McTest Face //////////////////////////////////////

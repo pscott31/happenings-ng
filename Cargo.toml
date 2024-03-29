@@ -80,7 +80,7 @@
     tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
     url = "2.5.0"
     uuid = "1.6.1"
-    wasm-bindgen-cli-support = "0.2.89"
+    wasm-bindgen-cli-support = "0.2.92"
 
     # # TODO - just for wasm?
     # [profile.release]

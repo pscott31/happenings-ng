@@ -10,11 +10,13 @@ mod navbar;
 mod not_found;
 mod reactive_list;
 mod sign_in;
+mod slot_state;
 mod users;
 mod utils;
 
 use app::App;
 use leptos::*;
+use slot_state::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]

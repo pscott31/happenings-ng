@@ -4,12 +4,15 @@ use crate::components::modal::Modal;
 use crate::field::Field;
 use crate::icon_button::{Color, IconButton};
 use crate::reactive_list::{ReactiveList, TrackableList};
+use crate::slot_state_for_ticket;
 
+use class_list::class_list;
 use common::booking::{self, get_booking, BookingId, CreateBooking, Status};
-use common::event::{get_event, Event, EventId};
+use common::event::{get_event, get_slot_details, Event, EventId, SlotDetail};
 use common::person::{get_person, Person};
 use common::ticket::Ticket;
 use icondata as i;
+use itertools::Itertools;
 use leptos::*;
 use leptos_router::{use_params_map, Outlet};
 use log::*;
@@ -23,7 +26,7 @@ pub fn Loader() -> impl IntoView {
 }
 
 fn notify(msg: &str, color: Color) -> View {
-    view! { <div class=format!("notification has-text-centered {}", color)>{msg.to_owned()}</div> }
+    view! { <div class=class_list!("notification has-text-centered", color)>{msg.to_owned()}</div> }
         .into_view()
 }
 
@@ -32,7 +35,7 @@ fn notify_details(msg: &str, details: String, color: Color) -> View {
     let details = store_value(details);
 
     view! {
-      <div class=format!("notification has-text-centered {}", color)>
+      <div class=class_list!("notification has-text-centered", color)>
         <div class="block">{msg.to_owned()}</div>
         <div class="block">
           <a on:click=move |_| modal_visible.set(true)>Show Error Details</a>
@@ -121,6 +124,7 @@ pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl I
                   <tr>
                     <td>{format!("Ticket {}", { i + 1 })}</td>
                     <td>{t.ticket_type.name.clone()}</td>
+                    <td>{t.slot_name.clone()}</td>
                     <td>{if t.vegetarian { "yes" } else { "no" }}</td>
                     <td>{if t.gluten_free { "yes" } else { "no" }}</td>
                     <td>{special}</td>
@@ -139,6 +143,7 @@ pub fn BookingSummary(#[prop(into)] booking: Signal<booking::Booking>) -> impl I
             <tr>
               <th></th>
               <th>Type</th>
+              <th>Slot</th>
               <th>Vegetarian</th>
               <th>Gluten Free</th>
               <th>Notes</th>
@@ -185,50 +190,63 @@ pub fn CheckPayment() -> impl IntoView {
     }
 }
 
-#[component]
-pub fn EventPage() -> impl IntoView {
-    let params = use_params_map();
-    let (event, set_event) = create_signal::<Option<Event>>(None);
+#[derive(Clone)]
+pub struct ContextEvent(pub StoredValue<Event>);
+#[derive(Clone)]
+pub struct ContextSlotDetails(pub StoredValue<Vec<SlotDetail>>);
 
-    let _event_res = create_resource(
-        move || params.with(|p| -> EventId { p.get("id").cloned().unwrap_or_default().into() }),
-        move |id| async move {
-            let er = get_event(id).await;
-            match er {
-                Ok(evt) => set_event(Some(evt)),
-                Err(e) => {
-                    warn!("problem getting event: {:?}", e);
-                    set_event(None)
-                }
-            }
-        },
+#[component]
+pub fn EventProvider() -> impl IntoView {
+    let params = use_params_map();
+    let event_id =
+        move || -> EventId { params.with(|p| p.get("id").cloned().unwrap_or_default().into()) };
+
+    let event = create_resource(event_id, move |id| async move { get_event(id).await });
+    let slot_details = create_resource(
+        event_id,
+        move |id| async move { get_slot_details(id).await },
     );
 
-    provide_context(event);
-    view! {
-      <Suspense fallback=move || view! { <p>"Loading Event..."</p> }>
-        <Outlet/>
-      </Suspense>
+    // TODO: Must be a better way with Show/Suspense/ErrorBoundary or something
+    move || match (event.get(), slot_details.get()) {
+        (Some(Err(e)), _) => {
+            warn!("error loading event: {:?}", e);
+            notify("Error loading event", Color::Danger).into_view()
+        }
+        (_, Some(Err(e))) => {
+            warn!("error loading slots: {:?}", e);
+            notify("Error loading slots", Color::Danger).into_view()
+        }
+        (Some(Ok(event)), Some(Ok(slot_details))) => {
+            provide_context(store_value(event.ticket_types()));
+            provide_context(ContextEvent(store_value(event)));
+            provide_context(ContextSlotDetails(store_value(slot_details)));
+
+            view! { <Outlet/> }.into_view()
+        }
+        (_, _) => view! { <p>"Loading.."</p> }.into_view(),
     }
 }
 
 #[component]
 pub fn ListBookings() -> impl IntoView {
-    let event = use_context::<ReadSignal<Option<Event>>>().unwrap();
-    let bookings_res = create_resource(event, |maybe_event| async move {
-        match maybe_event {
-            Some(event) => match booking::list_bookings(event.id.clone()).await {
-                Ok(bookings) => bookings,
-                Err(e) => {
-                    warn!("Error listing bookings: {}", e);
-                    Default::default()
+    let event = expect_context::<ContextEvent>().0;
+
+    let bookings_res =
+        create_resource(
+            || {},
+            move |_| async move {
+                match booking::list_bookings(event().id.clone()).await {
+                    Ok(bookings) => bookings,
+                    Err(e) => {
+                        warn!("Error listing bookings: {}", e);
+                        Default::default()
+                    }
                 }
             },
-            None => Default::default(),
-        }
-    });
+        );
     let bookings = move || bookings_res.get().unwrap_or_default();
-    let ticket_types = move || event().map(|e| e.ticket_types()).unwrap_or_default();
+    let ticket_types = move || event().ticket_types();
 
     let total_tickets = move || {
         let mut totals: HashMap<String, usize> = HashMap::new();
@@ -252,11 +270,7 @@ pub fn ListBookings() -> impl IntoView {
             .fold(Decimal::ZERO, |a, b| a + b.total_paid())
     };
 
-    let event_name = move || {
-        event()
-            .map(|e| e.name)
-            .unwrap_or("<unknown event>".to_string())
-    };
+    let event_name = move || event().name.clone();
 
     view! {
       <section class="section">
@@ -269,6 +283,7 @@ pub fn ListBookings() -> impl IntoView {
                 <For each=ticket_types key=move |tt| tt.name.clone() let:tt>
                   <th>{tt.name} Tickets</th>
                 </For>
+                <th>Slots</th>
                 <th>Order Value</th>
                 <th>Payment Recieved</th>
               </tr>
@@ -284,6 +299,16 @@ pub fn ListBookings() -> impl IntoView {
                       .map(|tt| { booking.tickets.iter().filter(|t| t.ticket_type == *tt).count() })
                       .map(|n| view! { <td class="has-text-right">{n}</td> })
                       .collect_view()}
+                  <td class="has-text-right">
+                    {booking
+                        .tickets
+                        .iter()
+                        .map(|t| t.slot_name.as_ref().unwrap_or(&"none".to_string()).clone())
+                        .sorted()
+                        .dedup()
+                        .collect::<Vec<String>>()
+                        .join(", ")}
+                  </td>
                   <td class="has-text-right">{format!("£{}", booking.total_ticket_value())}</td>
                   <td class="has-text-right">{format!("£{}", booking.total_paid())}</td>
                 </tr>
@@ -295,6 +320,7 @@ pub fn ListBookings() -> impl IntoView {
                 <For each=ticket_types key=move |tt| tt.name.clone() let:tt>
                   <td class="has-text-right">{move || total_tickets().get(tt.name.as_str()).cloned().unwrap_or(0)}</td>
                 </For>
+                <td></td>
                 <td class="has-text-right">{move || format!("£{}", total_ticket_value())}</td>
                 <td class="has-text-right">{move || format!("£{}", total_paid())}</td>
               </tr>
@@ -303,23 +329,6 @@ pub fn ListBookings() -> impl IntoView {
           <Outlet/>
         </div>
       </section>
-    }
-}
-
-#[component]
-pub fn BookingPage() -> impl IntoView {
-    let params = use_params_map();
-    let event_res = create_resource(
-        move || params.with(|p| -> EventId { p.get("id").cloned().unwrap_or_default().into() }),
-        get_event,
-    );
-
-    {
-        move || match event_res.get() {
-            None => view! { <p>"Loading..."</p> }.into_view(),
-            Some(Err(_e)) => view! { <p>"oops"</p> }.into_view(), //TODO
-            Some(Ok(event)) => view! { <NewBooking event=store_value(event)/> }.into_view(),
-        }
     }
 }
 
@@ -337,19 +346,17 @@ pub fn require_login() {
     });
 }
 
+// TODO - what is this for? extracting MaybePersonSignal into stored value?
 #[component]
-pub fn NewBooking(#[prop(into)] event: Signal<Event>) -> impl IntoView {
+pub fn NewBooking() -> impl IntoView {
     require_login();
-    let person = use_context::<MaybePersonSignal>().unwrap();
-
-    // todo: reactive?
-    provide_context(store_value(event().ticket_types()));
+    let person = expect_context::<MaybePersonSignal>();
 
     move || match person.get() {
         None => view! { <p>"Loading"</p> }.into_view(),
         Some(p) => {
             let sp = store_value(p);
-            view! { <NewBookingForPerson person=sp event=event/> }.into_view()
+            view! { <NewBookingForPerson person=sp/> }.into_view()
         }
     }
 }
@@ -403,19 +410,31 @@ pub fn GeneratePaymentLink() -> impl IntoView {
 }
 
 #[component]
-pub fn NewBookingForPerson(
-    #[prop(into)] person: Signal<Person>,
-    #[prop(into)] event: Signal<Event>,
-) -> impl IntoView {
+pub fn NewBookingForPerson(#[prop(into)] person: Signal<Person>) -> impl IntoView {
+    let event = expect_context::<ContextEvent>().0;
     let full_name = Signal::derive(move || person.get().full_name());
-    let event_name = move || event.with(|e| e.name.clone());
-    let event_tagline = move || event.with(|e| e.tagline.clone());
 
-    let tickets = vec![Ticket::new(event().default_ticket_type.clone())];
-    let tickets = create_rw_signal::<ReactiveList<Ticket>>(tickets.into());
+    let event_name = event().name.clone();
+    let event_tagline = event().tagline.clone();
+
+    let default_tt = event().default_ticket_type.clone();
+    let tickets = vec![Ticket::new(default_tt)];
+    let tickets: ReactiveList<Ticket> = tickets.into();
+    let tickets = create_rw_signal(tickets);
+
+    let slots = expect_context::<ContextSlotDetails>().0;
 
     let add_ticket = move || {
-        tickets.tracked_push(Ticket::new(event().default_ticket_type.clone()));
+        let mut nt = Ticket::new(event().default_ticket_type.clone());
+
+        if let Some((_, last_ticket)) = tickets().iter().last() {
+            if let Some(slot_name) = last_ticket().slot_name.as_deref() {
+                if slot_state_for_ticket(slots, slot_name, tickets(), None).can_take() {
+                    nt.slot_name = Some(slot_name.to_string());
+                }
+            }
+        }
+        tickets.tracked_push(nt);
     };
 
     let create_booking = create_server_action::<CreateBooking>();
@@ -443,6 +462,17 @@ pub fn NewBookingForPerson(
         })
     });
 
+    let validation_errors = move || {
+        tickets()
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, t))| t().slot_name.is_none())
+            .map(|(i, (_, _))| format!("Ticket {} has not been assigned to a slot", i + 1))
+            .collect::<Vec<String>>()
+    };
+
+    let disabled = Signal::derive(move || pending() | !validation_errors().is_empty());
+
     view! {
       <section class="section">
         <input type="hidden" name="event" value=event().id/>
@@ -458,21 +488,24 @@ pub fn NewBookingForPerson(
             <TicketForm tickets=tickets/>
             <div class="field is-grouped is-flex-wrap-wrap">
               <p class="control">
-                <IconButton icon=i::FaPlusSolid color=Color::Secondary on_click=add_ticket>
+                <IconButton icon=i::FaPlusSolid on_click=add_ticket>
                   "Add Another Ticket"
                 </IconButton>
               </p>
               <p class="control">
                 <IconButton
                   icon=i::FaBasketShoppingSolid
-                  color=Color::Primary
+                  // color=pay_btn_color
                   on_click=on_submit
-                  disabled=pending
+                  disabled=disabled
                   loading=pending
                 >
+
                   Pay Now
                 </IconButton>
+                <p class="is-danger">{move || validation_errors().join(", ")}</p>
               </p>
+
             </div>
 
             <Outlet/>
@@ -489,11 +522,11 @@ pub fn TicketForm(tickets: RwSignal<ReactiveList<Ticket>>) -> impl IntoView {
         tickets.with(|gl| {
             gl.iter()
                 .enumerate()
-                .map(|(i, (&uid, &gv))| {
+                .map(|(i, (&uid, &ticket))| {
                     if i == 0 {
                         view! {
                           <Field label=move || format!("Ticket {}", { i + 1 })>
-                            <TicketControl ticket=gv/>
+                            <TicketControl ticket=ticket tickets=tickets/>
                           </Field>
                         }
                     } else {
@@ -505,7 +538,7 @@ pub fn TicketForm(tickets: RwSignal<ReactiveList<Ticket>>) -> impl IntoView {
                                 <IconButton on_click=move || tickets.tracked_remove(uid) icon=i::FaTrashSolid/>
                               }
                           }>
-                            <TicketControl ticket=gv/>
+                            <TicketControl ticket=ticket tickets=tickets/>
                           </Field>
                         }
                     }

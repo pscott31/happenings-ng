@@ -6,6 +6,7 @@ history.txt
 .DS_Store
 .VSCodeCounter
 .lsp
+.pyenv
 happenings.toml
 happenings.db
 scripts/testdata.db

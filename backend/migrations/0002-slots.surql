@@ -1,0 +1,1 @@
+update event set slots=[];

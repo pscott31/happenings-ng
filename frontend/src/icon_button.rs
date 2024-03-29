@@ -1,11 +1,11 @@
-use crate::utils::*;
+use class_list::class_list;
+use class_list::traits::ClassList;
 use leptos::*;
 use leptos_icons::Icon;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
+
 pub enum Color {
     #[default]
     Default,
@@ -17,22 +17,19 @@ pub enum Color {
     Danger,
 }
 
-impl Color {
-    fn class(&self) -> &'static str {
+impl ClassList for Color {
+    fn to_class_list(&self, _normalize: bool) -> String {
         match self {
             Color::Default => "",
             Color::Primary => "is-primary",
             Color::Secondary => "is-secondary",
-            Color::Info => "is-info",
+            Color::Info => "is-infso",
             Color::Success => "is-success",
             Color::Warning => "is-warning",
             Color::Danger => "is-danger",
         }
+        .into()
     }
-}
-
-impl Display for Color {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str(self.class()) }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -45,53 +42,41 @@ pub enum Size {
     Large,
 }
 
-impl Size {
-    fn class(&self) -> &'static str {
+impl ClassList for Size {
+    fn to_class_list(&self, _normalize: bool) -> String {
         match self {
             Size::Small => "is-small",
             Size::Normal => "",
             Size::Medium => "is-medium",
             Size::Large => "is-large",
         }
+        .into()
     }
 }
 
-impl Display for Size {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str(self.class()) }
-}
-
+// default=MaybeSignal<Color>::Static))
 #[component]
 pub fn IconButton<F>(
-    // todo this should work
-    // #[prop(into)] on_click: Callback<()>,
     on_click: F,
-    #[prop(into, optional)] icon: Option<icondata::Icon>,
-    #[prop(into, optional)] color: Color,
-    #[prop(into, optional)] size: Size,
-    #[prop(into, optional)] class: OptionalMaybeSignal<String>,
+    #[prop(into)] icon: MaybeSignal<icondata::Icon>,
+    #[prop(optional, into)] color: MaybeProp<Color>,
+    #[prop(optional, into)] size: MaybeProp<Size>,
     #[prop(optional)] children: Option<Children>,
-    #[prop(into, optional)] disabled: OptionalMaybeSignal<bool>,
-    #[prop(into, default = MaybeSignal::Static(false))] loading: MaybeSignal<bool>,
+    #[prop(optional, into)] disabled: MaybeProp<bool>,
+    #[prop(optional, into)] loading: MaybeProp<bool>,
 ) -> impl IntoView
 where
     F: Fn() + 'static,
 {
-    let icon_view = icon.map(|i| {
-        view! {
-          <span class=format!("icon {}", size)>
-            <Icon icon=i/>
-          </span>
-        }
-    });
-
     view! {
       <button
-        disabled=move || disabled.or_default().get()
-        class=format!("button {} {}", color, class.or_default().get())
-        class:is-loading=loading
+        disabled=disabled
+        class=class_list!("button", color, "is-loading" <=> loading)
         on:click=move |_| on_click()
       >
-        {icon_view}
+        <span class=class_list!("icon", size)>
+          <Icon icon=icon/>
+        </span>
         {children.map(|x| view! { <span>{x()}</span> })}
       </button>
     }

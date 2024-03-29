@@ -7,6 +7,7 @@ pub struct Ticket {
     pub vegetarian: bool,
     pub gluten_free: bool,
     pub dietary_requirements: String,
+    pub slot_name: Option<String>,
 }
 
 impl Ticket {
@@ -16,6 +17,7 @@ impl Ticket {
             vegetarian: false,
             gluten_free: false,
             dietary_requirements: "".to_string(),
+            slot_name: None,
         }
     }
 }
@@ -26,6 +28,7 @@ pub struct TicketType {
     pub price: Decimal,
     pub square_item_id: String,
     pub square_catalog_version: i64,
+    pub available: Option<i64>,
 }
 
 pub type TicketTypes = Vec<TicketType>;

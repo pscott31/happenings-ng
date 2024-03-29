@@ -75,7 +75,11 @@ pub async fn create_session(person_id: PersonId) -> Result<String, Fail> {
         .db
         .create("session")
         .content(NewDbSession {
-            expires_at: chrono::Utc::now().add(Duration::days(1)),
+            expires_at: chrono::Utc::now().add(Duration::hours(24)),
+            // expires_at: chrono::DateTime::from_naive_utc_and_offset(
+            //     chrono::Utc::now().naive_utc(),
+            //     chrono::Duration::hours(24),
+            // ),
             user: person_id.into(),
         })
         .await

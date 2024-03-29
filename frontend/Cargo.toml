@@ -40,3 +40,5 @@
   url = { workspace = true }
   uuid = { workspace = true }
   wasm-cookies = "0.2.1"
+itertools = "0.12.1"
+class_list = "0.1.7"

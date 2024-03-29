@@ -85,6 +85,14 @@ pub enum Status {
     Cancelled,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub const GOOD_STATUSES: &[Status] = &[Status::Paid, Status::Accepted];
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Status {
+    pub fn is_good(&self) -> bool { GOOD_STATUSES.contains(self) }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Payment {
     Cash { amount: Decimal, to: String },
@@ -224,13 +232,14 @@ mod backend {
             square_order: None,
         };
 
-        let mut bs: Vec<crate::surreal::Record> =
-            app_state
-                .db
-                .create("booking")
-                .content(b)
-                .await
-                .map_err(|e| ServerFnError::new(format!("failed to create new booking: {}", e)))?;
+        let mut bs: Vec<crate::surreal::Record> = app_state
+            .db
+            .create("booking")
+            .content(b)
+            .await
+            .map_err(
+            |e| ServerFnError::new(format!("failed to create new booking: {}", e))
+        )?;
 
         let b = bs
             .pop()
@@ -313,10 +322,7 @@ mod backend {
         let _: surreal::Record = app_state
             .db
             .update(booking.id)
-            .patch(PatchOp::replace(
-                "/square_order",
-                parsed_res.payment_link.order_id,
-            ))
+            .patch(PatchOp::replace("/square_order", parsed_res.payment_link.order_id))
             .await
             .map_err(Fail::DBError)?
             .ok_or(Fail::NotFound(booking_id.into()))?;

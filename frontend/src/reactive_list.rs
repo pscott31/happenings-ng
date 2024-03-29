@@ -10,6 +10,9 @@ where
 impl<T> ReactiveList<T> {
     pub fn new() -> Self { ReactiveList(IndexMap::new()) }
     pub fn iter(&self) -> impl Iterator<Item = (&Uuid, &RwSignal<T>)> + '_ { self.0.iter() }
+    pub fn values(&self) -> impl Iterator<Item = &RwSignal<T>> + '_ { self.0.values() }
+    pub fn into_values(self) -> impl Iterator<Item = RwSignal<T>> { self.0.into_values() }
+    pub fn get(&self, id: &Uuid) -> Option<&RwSignal<T>> { self.0.get(id) }
 }
 
 impl<T> Default for ReactiveList<T> {
@@ -31,6 +34,13 @@ impl<T> From<Vec<T>> for ReactiveList<T> {
                 .collect(),
         )
     }
+}
+
+impl<T> IntoIterator for ReactiveList<T> {
+    type Item = (Uuid, RwSignal<T>);
+    type IntoIter = indexmap::map::IntoIter<Uuid, RwSignal<T>>;
+
+    fn into_iter(self) -> Self::IntoIter { self.0.into_iter() }
 }
 
 // impl<T> IntoIterator for ReactiveList<T> {

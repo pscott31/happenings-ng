@@ -1,10 +1,10 @@
 use leptos::*;
 use leptos_router::*;
-use tracing::{info, warn};
+use tracing::warn;
 
 use super::navbar::NavBar;
 use super::not_found::NotFound;
-use crate::book_event::{Booking, BookingPage, BookingRoot, CheckPayment, EventPage, GeneratePaymentLink, ListBookings};
+use crate::book_event::{Booking, BookingRoot, CheckPayment, EventProvider, GeneratePaymentLink, ListBookings, NewBooking};
 use crate::events::Events;
 use crate::sign_in::{OAuthReturn, SignIn};
 use crate::users::Users;
@@ -33,14 +33,16 @@ impl SessionID {
         // TODO: Decide properly if we're using local storage or cookies
         #[cfg(target_arch = "wasm32")]
         match self {
-            Self::Set(id) => wasm_cookies::set(
-                "session_id",
-                id.as_ref(),
-                &wasm_cookies::CookieOptions {
-                    path: Some("/"),
-                    ..Default::default()
-                },
-            ),
+            Self::Set(id) => {
+                wasm_cookies::set(
+                    "session_id",
+                    id.as_ref(),
+                    &wasm_cookies::CookieOptions {
+                        path: Some("/"),
+                        ..Default::default()
+                    },
+                )
+            }
             Self::NotSet => wasm_cookies::delete("session_id"),
         }
     }
@@ -48,7 +50,6 @@ impl SessionID {
     pub fn from_cookie() -> Self {
         // TODO: Decide properly if we're using local storage or cookies
 
-        info!("Getting sid from cookie");
         #[cfg(target_arch = "wasm32")]
         match wasm_cookies::get("session_id") {
             None => Self::NotSet,
@@ -90,9 +91,9 @@ pub fn App() -> impl IntoView {
           <Route path="/" view=|| with_navbar(Events())/>
           <Route path="/users" view=|| with_navbar(Users())/>
           <Route path="/events" view=|| with_navbar(Events())/>
-          <Route path="/events/:id" view=|| with_navbar(EventPage())>
+          <Route path="/events/:id" view=|| with_navbar(EventProvider())>
             <Route path="bookings" view=ListBookings/>
-            <Route path="book" view=BookingPage/>
+            <Route path="book" view=NewBooking/>
           </Route>
 
           <Route path="/booking" view=|| with_navbar(BookingRoot())>

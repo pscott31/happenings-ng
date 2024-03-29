@@ -154,30 +154,31 @@ pub fn SignUpPassword(email: String) -> impl IntoView {
 
     let set_session_id = use_context::<WriteSignal<SessionID>>().unwrap();
 
-    let submit = create_action(move |new_user: &NewUser| {
-        let new_user = new_user.clone();
-        async move {
-            let _res = common::auth::password::signup_password(
-                new_user.email.clone(),
-                new_user.password.clone(),
-                new_user.given_name,
-                new_user.family_name,
-                new_user.phone,
-            )
-            .await; //todo - check resut
+    let submit =
+        create_action(move |new_user: &NewUser| {
+            let new_user = new_user.clone();
+            async move {
+                let _res = common::auth::password::signup_password(
+                    new_user.email.clone(),
+                    new_user.password.clone(),
+                    new_user.given_name,
+                    new_user.family_name,
+                    new_user.phone,
+                )
+                .await; //todo - check resut
 
-            match common::auth::password::signin(new_user.email, new_user.password).await {
-                // todo handle error
-                Err(_e) => {}
-                Ok(session_id) => {
-                    set_session_id(SessionID::Set(session_id));
-                    sign_in_signal.set(SignInStatus::NotVisible);
+                match common::auth::password::signin(new_user.email, new_user.password).await {
+                    // todo handle error
+                    Err(_e) => {}
+                    Ok(session_id) => {
+                        set_session_id(SessionID::Set(session_id));
+                        sign_in_signal.set(SignInStatus::NotVisible);
+                    }
                 }
-            }
 
-            Ok::<(), String>(())
-        }
-    });
+                Ok::<(), String>(())
+            }
+        });
 
     let error_notify = move || match submit.value()() {
         Some(Err(e)) => {
@@ -317,7 +318,7 @@ pub fn SignInWelcome() -> impl IntoView {
     });
 
     view! {
-      <h1 class="subtitle my-4">Sign in to continue ay</h1>
+      <h1 class="subtitle my-4">Sign in to continue</h1>
       <form on:submit=move |e| {
           log!("form submission");
           e.prevent_default();
@@ -401,16 +402,17 @@ where
         .ok_or("failed to open popup window".to_string())?;
 
     // TODO: How do we remove this once we're done?
-    let _remove_listener = leptos_use::use_event_listener(window(), ev::message, move |evt| {
-        if evt.origin() == window().origin() {
-            if let Some(msg_str) = evt.data().as_string() {
-                if msg_str == "auth_ok" {
-                    popup.close().unwrap(); // todo
-                    on_success();
+    let _remove_listener =
+        leptos_use::use_event_listener(window(), ev::message, move |evt| {
+            if evt.origin() == window().origin() {
+                if let Some(msg_str) = evt.data().as_string() {
+                    if msg_str == "auth_ok" {
+                        popup.close().unwrap(); // todo
+                        on_success();
+                    }
                 }
             }
-        }
-    });
+        });
 
     Ok(())
 }

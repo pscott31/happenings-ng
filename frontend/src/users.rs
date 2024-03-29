@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use common::user;
+use common::{role::RoleId, user};
 use leptos::*;
 use leptos_struct_table::*;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,8 @@ pub struct User {
     pub family_name: String,
     pub email: String,
     pub phone: Option<String>,
+    #[table(renderer = "RoleListRenderer")]
+    pub roles: Vec<RoleId>,
 }
 
 impl From<user::User> for User {
@@ -30,8 +32,24 @@ impl From<user::User> for User {
             family_name: u.person.family_name,
             email: u.person.email,
             phone: u.person.phone,
+            roles: u.roles,
+            // roles: u.roles.into_iter().map(|role| role.to_string()).collect(),
         }
     }
+}
+
+#[allow(unused_variables)]
+#[component]
+pub fn RoleListRenderer<F>(
+    #[prop(into)] class: MaybeSignal<String>,
+    #[prop(into)] value: MaybeSignal<Vec<RoleId>>,
+    index: usize,
+    on_change: F,
+) -> impl IntoView
+where
+    F: Fn(Vec<RoleId>) + 'static,
+{
+    view! { <ul>{value().into_iter().map(move |role| view! { <li>{role.to_string()}</li> }).collect_view()}</ul> }
 }
 
 #[component]
