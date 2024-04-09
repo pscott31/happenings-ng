@@ -1,6 +1,7 @@
 {
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
+        "./leptos-datatable/examples/basic/Cargo.toml"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
         "leptosfmt",

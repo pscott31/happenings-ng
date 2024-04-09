@@ -11,3 +11,4 @@ happenings.toml
 happenings.db
 scripts/testdata.db
 scripts/history.txt
+leptos-datatable/examples/basic/dist/

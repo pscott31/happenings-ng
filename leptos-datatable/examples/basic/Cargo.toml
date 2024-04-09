@@ -1,0 +1,13 @@
+[package]
+  edition = "2021"
+  name = "basic"
+  version = "0.1.0"
+
+[dependencies]
+  console_error_panic_hook = "0.1.7"
+  console_log = "1.0.0"
+  leptos = { version = "0.6.10", features = ["csr", "nightly"] }
+  log = "0.4.21"
+  polars-core = { version = "0.38.3" }
+
+  # polars = { version = "0.38.3" }

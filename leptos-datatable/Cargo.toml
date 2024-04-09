@@ -1,0 +1,12 @@
+[package]
+  edition = "2021"
+  name = "leptos-datatable"
+  version = "0.1.0"
+
+[workspace]
+  members = ["examples/basic"]
+  resolver = "2"
+
+[dependencies]
+  console_error_panic_hook = "0.1.7"
+  console_log = "1.0.0"
